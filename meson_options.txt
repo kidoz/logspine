@@ -1,0 +1,5 @@
+option('build_examples', type: 'boolean', value: true, description: 'Build examples')
+option('build_tests', type: 'boolean', value: true, description: 'Build tests')
+option('build_benchmarks', type: 'boolean', value: false, description: 'Build benchmarks')
+option('network', type: 'boolean', value: true, description: 'Build network sinks')
+option('developer_mode', type: 'boolean', value: false, description: 'Enable strict developer tooling')
