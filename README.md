@@ -1,5 +1,12 @@
 # LogSpine
 
+[![CI](https://github.com/kidoz/logspine/actions/workflows/ci.yml/badge.svg)](https://github.com/kidoz/logspine/actions/workflows/ci.yml)
+[![C++23](https://img.shields.io/badge/C%2B%2B-23-blue.svg)](https://en.cppreference.com/w/cpp/23)
+[![Build: Meson](https://img.shields.io/badge/build-Meson-264478.svg)](https://mesonbuild.com/)
+[![Platforms](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)](#build)
+[![Version](https://img.shields.io/badge/version-0.1.0-informational.svg)](meson.build)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 LogSpine is a C++23 structured logging library with a small facade, pluggable sinks, bounded async delivery, and a Meson build. It is designed for Linux, Windows, and macOS, with local sinks implemented first and network sinks exposed behind the same public API.
 
 ## Features
