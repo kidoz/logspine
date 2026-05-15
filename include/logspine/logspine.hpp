@@ -22,6 +22,7 @@
 #include <logspine/sinks/gelf_udp_sink.hpp>
 #include <logspine/sinks/network_sink_statistics.hpp>
 #include <logspine/sinks/tcp_json_lines_sink.hpp>
+#include <logspine/sinks/otlp_http_sink.hpp>
 
 #define LOGSPINE_DETAIL_LOG(LOGSPINE_LOGGER, LOGSPINE_LEVEL, LOGSPINE_MESSAGE, ...)                           \
   do {                                                                                                         \

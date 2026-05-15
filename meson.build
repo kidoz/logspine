@@ -59,6 +59,7 @@ public_headers = files(
   'include/logspine/sinks/gelf_udp_sink.hpp',
   'include/logspine/sinks/network_sink_statistics.hpp',
   'include/logspine/sinks/tcp_json_lines_sink.hpp',
+  'include/logspine/sinks/otlp_http_sink.hpp',
 )
 
 logspine_sources = files(
@@ -78,6 +79,7 @@ logspine_sources = files(
   'src/sinks/gelf_udp_sink.cpp',
   'src/sinks/network_payloads.cpp',
   'src/sinks/tcp_json_lines_sink.cpp',
+  'src/sinks/otlp_http_sink.cpp',
 )
 
 logspine_cpp_args = project_warnings
@@ -143,6 +145,8 @@ if get_option('build_tests')
     'test_async_dispatcher': 'tests/test_async_dispatcher.cpp',
     'test_sinks': 'tests/test_sinks.cpp',
     'test_mdc': 'tests/test_mdc.cpp',
+    'test_format': 'tests/test_format.cpp',
+    'test_otlp': 'tests/test_otlp.cpp',
   }
   if network_enabled
     tests += {'test_network_sinks': 'tests/test_network_sinks.cpp'}
