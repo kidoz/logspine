@@ -1,8 +1,11 @@
 #include <logspine/sinks/tcp_json_lines_sink.hpp>
 
+#include <algorithm>
+#include <chrono>
 #include <exception>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <utility>
 
 #include "net/socket.hpp"
@@ -28,12 +31,20 @@ tcp_json_lines_sink::tcp_json_lines_sink(tcp_json_lines_sink_options options)
 tcp_json_lines_sink::~tcp_json_lines_sink() = default;
 
 void tcp_json_lines_sink::write(const log_event& event) {
-  const auto payload = detail::make_tcp_json_lines_payload(event);
+  if (!should_log(event)) return;
 
-  std::scoped_lock lock(mutex_);
+  std::string payload;
+  if (formatter_) {
+    formatter_->format(event, payload);
+  } else {
+    payload = detail::make_tcp_json_lines_payload(event);
+  }
+
+  std::unique_lock lock(mutex_);
   ++statistics_.write_attempts;
 
   std::uint32_t retries_remaining = options_.reconnect_on_failure ? options_.max_write_retries : 0U;
+  unsigned int backoff_ms = 10;
   for (;;) {
     try {
       ensure_connected();
@@ -57,6 +68,11 @@ void tcp_json_lines_sink::write(const log_event& event) {
     --retries_remaining;
     ++statistics_.reconnect_attempts;
     transport_->client.close();
+
+    lock.unlock();
+    std::this_thread::sleep_for(std::chrono::milliseconds(backoff_ms));
+    backoff_ms = std::min(backoff_ms * 2, 1000U);
+    lock.lock();
   }
 }
 

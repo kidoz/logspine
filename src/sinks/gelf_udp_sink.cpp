@@ -1,8 +1,11 @@
 #include <logspine/sinks/gelf_udp_sink.hpp>
 
+#include <algorithm>
+#include <chrono>
 #include <exception>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <utility>
 
 #include "net/socket.hpp"
@@ -26,12 +29,20 @@ gelf_udp_sink::gelf_udp_sink(gelf_udp_sink_options options)
 gelf_udp_sink::~gelf_udp_sink() = default;
 
 void gelf_udp_sink::write(const log_event& event) {
-  const auto payload = detail::make_gelf_payload(event, options_.source_host);
+  if (!should_log(event)) return;
 
-  std::scoped_lock lock(mutex_);
+  std::string payload;
+  if (formatter_) {
+    formatter_->format(event, payload);
+  } else {
+    payload = detail::make_gelf_payload(event, options_.source_host);
+  }
+
+  std::unique_lock lock(mutex_);
   ++statistics_.write_attempts;
 
   std::uint32_t retries_remaining = options_.reconnect_on_failure ? options_.max_write_retries : 0U;
+  unsigned int backoff_ms = 10;
   for (;;) {
     try {
       transport_->client.send(payload);
@@ -53,6 +64,12 @@ void gelf_udp_sink::write(const log_event& event) {
 
     --retries_remaining;
     ++statistics_.reconnect_attempts;
+
+    lock.unlock();
+    std::this_thread::sleep_for(std::chrono::milliseconds(backoff_ms));
+    backoff_ms = std::min(backoff_ms * 2, 1000U);
+    lock.lock();
+
     configure_transport();
   }
 }

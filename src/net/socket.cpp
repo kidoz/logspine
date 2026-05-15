@@ -76,6 +76,18 @@ void close_socket(native_socket socket_handle) noexcept {
 #endif
 }
 
+void set_socket_timeout(native_socket socket_handle, int timeout_ms) noexcept {
+#if defined(_WIN32)
+  DWORD timeout = timeout_ms;
+  setsockopt(socket_handle, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&timeout), sizeof(timeout));
+#else
+  struct timeval tv{};
+  tv.tv_sec = timeout_ms / 1000;
+  tv.tv_usec = (timeout_ms % 1000) * 1000;
+  setsockopt(socket_handle, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const void*>(&tv), static_cast<socklen_t>(sizeof(tv)));
+#endif
+}
+
 [[nodiscard]] bool last_error_is_interrupted() noexcept {
 #if defined(_WIN32)
   return WSAGetLastError() == WSAEINTR;
@@ -103,6 +115,7 @@ native_socket connect_tcp_socket(const std::string& host, std::uint16_t port) {
     if (socket_handle == invalid_socket) {
       continue;
     }
+    set_socket_timeout(socket_handle, 5000); // 5 seconds timeout
 #if defined(_WIN32)
     const auto address_length = static_cast<int>(current->ai_addrlen);
 #else
@@ -138,6 +151,7 @@ std::pair<native_socket, std::vector<unsigned char>> configure_udp_socket(const 
     if (socket_handle == invalid_socket) {
       continue;
     }
+    set_socket_timeout(socket_handle, 5000); // 5 seconds timeout
 
     std::vector<unsigned char> destination(current->ai_addrlen);
     std::memcpy(destination.data(), current->ai_addr, current->ai_addrlen);
