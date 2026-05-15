@@ -76,7 +76,14 @@ bool async_dispatcher::enqueue_event(log_event event) {
   while (!stopping_ && queue_.size() >= options_.queue_capacity) {
     switch (options_.overflow) {
       case overflow_policy::block:
-        queue_not_full_.wait(lock, [this] { return stopping_ || queue_.size() < options_.queue_capacity; });
+        if (options_.block_retry_timeout.count() > 0) {
+          if (!queue_not_full_.wait_for(lock, options_.block_retry_timeout, [this] { return stopping_ || queue_.size() < options_.queue_capacity; })) {
+            dropped_events_.fetch_add(1, std::memory_order_relaxed);
+            return false;
+          }
+        } else {
+          queue_not_full_.wait(lock, [this] { return stopping_ || queue_.size() < options_.queue_capacity; });
+        }
         break;
       case overflow_policy::drop_newest:
         dropped_events_.fetch_add(1, std::memory_order_relaxed);
@@ -145,23 +152,23 @@ void async_dispatcher::safe_flush_sinks() noexcept {
 }
 
 void async_dispatcher::shutdown() noexcept {
+  bool should_join = false;
   {
     std::scoped_lock lock(mutex_);
-    if (stopping_) {
-      if (worker_.joinable()) {
-        worker_.join();
-      }
-      return;
+    if (!stopping_) {
+      stopping_ = true;
+      should_join = true;
     }
-    stopping_ = true;
   }
 
-  queue_not_empty_.notify_all();
-  queue_not_full_.notify_all();
-  flush_completed_.notify_all();
+  if (should_join) {
+    queue_not_empty_.notify_all();
+    queue_not_full_.notify_all();
+    flush_completed_.notify_all();
 
-  if (worker_.joinable()) {
-    worker_.join();
+    if (worker_.joinable()) {
+      worker_.join();
+    }
   }
 }
 

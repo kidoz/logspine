@@ -26,6 +26,7 @@ struct async_options {
   std::size_t queue_capacity = 8192;
   overflow_policy overflow = overflow_policy::drop_newest;
   std::size_t batch_size = 64;
+  std::chrono::milliseconds block_retry_timeout = std::chrono::milliseconds(5000);
 };
 
 class async_dispatcher final : public dispatcher {
