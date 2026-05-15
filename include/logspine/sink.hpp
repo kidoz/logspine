@@ -1,8 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 #include <logspine/log_event.hpp>
+#include <logspine/formatter.hpp>
+#include <logspine/filter.hpp>
 
 namespace logspine {
 
@@ -17,6 +20,17 @@ class sink {
 
   virtual void write(const log_event& event) = 0;
   virtual void flush() = 0;
+
+  void set_formatter(std::unique_ptr<formatter> f) { formatter_ = std::move(f); }
+  void set_filter(std::unique_ptr<filter> f) { filter_ = std::move(f); }
+
+  [[nodiscard]] bool should_log(const log_event& event) const {
+    return filter_ ? filter_->accept(event) : true;
+  }
+
+ protected:
+  std::unique_ptr<formatter> formatter_;
+  std::unique_ptr<filter> filter_;
 };
 
 }  // namespace logspine

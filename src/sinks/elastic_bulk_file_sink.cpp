@@ -30,9 +30,17 @@ elastic_bulk_file_sink::elastic_bulk_file_sink(elastic_bulk_file_sink_options op
 }
 
 void elastic_bulk_file_sink::write(const log_event& event) {
+  if (!should_log(event)) return;
+
   std::scoped_lock lock(mutex_);
   stream_ << make_action_line(options_.index_name);
-  stream_ << to_json_lines_record(event);
+  if (formatter_) {
+    std::string buffer;
+    formatter_->format(event, buffer);
+    stream_ << buffer;
+  } else {
+    stream_ << to_json_lines_record(event);
+  }
 }
 
 void elastic_bulk_file_sink::flush() {
