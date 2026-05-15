@@ -4,7 +4,6 @@
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -13,6 +12,7 @@
 
 #include <logspine/dispatcher.hpp>
 #include <logspine/sink.hpp>
+#include <logspine/detail/mpsc_queue.hpp>
 
 namespace logspine {
 
@@ -52,21 +52,23 @@ class async_dispatcher final : public dispatcher {
   void worker_loop();
   bool enqueue_event(log_event event);
   void enqueue_flush_request(std::uint64_t flush_id);
-  bool try_drop_oldest_event_locked();
   void safe_write(const log_event& event) noexcept;
   void safe_flush_sinks() noexcept;
   void shutdown() noexcept;
 
   std::vector<std::shared_ptr<sink>> sinks_;
   async_options options_;
+  std::unique_ptr<detail::mpsc_queue<queue_item>> queue_;
+
   mutable std::mutex mutex_;
   std::condition_variable queue_not_empty_;
   std::condition_variable queue_not_full_;
-  std::condition_variable flush_completed_;
-  std::deque<queue_item> queue_;
   std::thread worker_;
-  bool stopping_ = false;
-  std::uint64_t completed_flush_id_ = 0;
+
+  std::atomic<bool> stopping_{false};
+  std::atomic<bool> sleeping_{false};
+
+  std::atomic<std::uint64_t> completed_flush_id_{0};
   std::atomic<std::uint64_t> next_flush_id_{0};
   std::atomic<std::uint64_t> dropped_events_{0};
   std::atomic<std::uint64_t> sink_failures_{0};

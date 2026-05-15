@@ -99,17 +99,22 @@ TEST_CASE("block overflow policy stalls producers until capacity returns", "[asy
   second.message = "second";
   dispatcher.dispatch(std::move(second));
 
-  std::atomic<bool> third_finished = false;
-  std::thread producer([&dispatcher, &third_finished] {
-    logspine::log_event third;
-    third.logger_name = "async";
-    third.message = "third";
-    dispatcher.dispatch(std::move(third));
-    third_finished.store(true, std::memory_order_relaxed);
+  logspine::log_event third;
+  third.logger_name = "async";
+  third.message = "third";
+  dispatcher.dispatch(std::move(third));
+
+  std::atomic<bool> fourth_finished = false;
+  std::thread producer([&dispatcher, &fourth_finished] {
+    logspine::log_event fourth;
+    fourth.logger_name = "async";
+    fourth.message = "fourth";
+    dispatcher.dispatch(std::move(fourth));
+    fourth_finished.store(true, std::memory_order_relaxed);
   });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(30));
-  REQUIRE_FALSE(third_finished.load(std::memory_order_relaxed));
+  REQUIRE_FALSE(fourth_finished.load(std::memory_order_relaxed));
 
   {
     std::scoped_lock lock(sink->mutex);
@@ -119,7 +124,7 @@ TEST_CASE("block overflow policy stalls producers until capacity returns", "[asy
 
   producer.join();
   dispatcher.flush();
-  REQUIRE(third_finished.load(std::memory_order_relaxed));
+  REQUIRE(fourth_finished.load(std::memory_order_relaxed));
 }
 
 TEST_CASE("drop_oldest overflow policy records dropped events", "[async][overflow]") {
