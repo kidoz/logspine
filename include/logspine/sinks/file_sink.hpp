@@ -12,6 +12,8 @@ struct file_sink_options {
   std::filesystem::path path;
   sink_format format = sink_format::json_lines;
   bool append = true;
+  std::size_t max_file_size = 0; // 0 means no rotation
+  std::uint32_t max_files = 0;
 };
 
 class file_sink final : public sink {
@@ -22,6 +24,9 @@ class file_sink final : public sink {
   void flush() override;
 
  private:
+  void rotate_if_needed();
+  void open_file();
+
   file_sink_options options_;
   std::ofstream stream_;
   mutable std::mutex mutex_;
