@@ -4,10 +4,13 @@
 #include <logspine/config.hpp>
 #include <logspine/dispatcher.hpp>
 #include <logspine/field.hpp>
+#include <logspine/filter.hpp>
+#include <logspine/formatter.hpp>
 #include <logspine/json.hpp>
 #include <logspine/level.hpp>
 #include <logspine/log_event.hpp>
 #include <logspine/logger.hpp>
+#include <logspine/mdc.hpp>
 #include <logspine/noop_sink.hpp>
 #include <logspine/registry.hpp>
 #include <logspine/sink.hpp>

@@ -5,6 +5,7 @@
 #include <utility>
 
 #include <logspine/log_event.hpp>
+#include <logspine/mdc.hpp>
 
 namespace logspine {
 
@@ -78,14 +79,33 @@ void logger::fatal(std::string_view message, std::initializer_list<field> fields
 }
 
 void logger::dispatch(level severity, std::string_view message, std::vector<field> fields, source_location location) {
+  constexpr std::size_t max_message_length = 32768;
+  constexpr std::size_t max_fields_count = 64;
+
   log_event event;
   event.severity = severity;
   event.logger_name = name_;
-  event.message = std::string(message);
+
+  if (message.size() > max_message_length) {
+    event.message = std::string(message.substr(0, max_message_length)) + "... [truncated]";
+  } else {
+    event.message = std::string(message);
+  }
+
+  auto mdc_fields = mdc::get_all();
+  if (!mdc_fields.empty()) {
+    fields.insert(fields.end(), mdc_fields.begin(), mdc_fields.end());
+  }
+
+  if (fields.size() > max_fields_count) {
+    fields.erase(fields.begin() + max_fields_count, fields.end());
+    fields.push_back(kv("_truncated_fields", true));
+  }
+  event.fields = std::move(fields);
+
   event.timestamp = std::chrono::system_clock::now();
   event.thread_id = std::this_thread::get_id();
   event.location = location;
-  event.fields = std::move(fields);
   dispatcher_->dispatch(std::move(event));
 }
 

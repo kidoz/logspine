@@ -43,9 +43,9 @@ public_headers = files(
   'include/logspine/config.hpp',
   'include/logspine/dispatcher.hpp',
   'include/logspine/field.hpp',
-  'include/logspine/json.hpp',
-  'include/logspine/level.hpp',
-  'include/logspine/log_event.hpp',
+  'include/logspine/mdc.hpp',
+  'include/logspine/filter.hpp',
+  'include/logspine/formatter.hpp',
   'include/logspine/logger.hpp',
   'include/logspine/logspine.hpp',
   'include/logspine/noop_sink.hpp',
@@ -61,12 +61,13 @@ public_headers = files(
   'include/logspine/sinks/tcp_json_lines_sink.hpp',
 )
 
-library_sources = files(
+logspine_sources = files(
   'src/async_dispatcher.cpp',
   'src/field.cpp',
   'src/json.cpp',
   'src/level.cpp',
   'src/logger.cpp',
+  'src/mdc.cpp',
   'src/net/socket.cpp',
   'src/registry.cpp',
   'src/sync_dispatcher.cpp',
@@ -85,7 +86,7 @@ endif
 
 logspine_lib = library(
   'logspine',
-  library_sources,
+  logspine_sources,
   cpp_args: logspine_cpp_args,
   include_directories: [inc, private_inc],
   install: true,
@@ -132,6 +133,7 @@ if get_option('build_tests')
     'test_json': 'tests/test_json.cpp',
     'test_async_dispatcher': 'tests/test_async_dispatcher.cpp',
     'test_sinks': 'tests/test_sinks.cpp',
+    'test_mdc': 'tests/test_mdc.cpp',
   }
   if network_enabled
     tests += {'test_network_sinks': 'tests/test_network_sinks.cpp'}
@@ -159,7 +161,7 @@ if get_option('build_benchmarks')
 endif
 
 clang_format = find_program('clang-format', required: false)
-format_targets = public_headers + library_sources + files(
+format_targets = public_headers + logspine_sources + files(
   'examples/basic.cpp',
   'examples/elastic_bulk_file.cpp',
   'examples/graylog_gelf_udp.cpp',
@@ -177,5 +179,5 @@ endif
 
 clang_tidy = find_program('clang-tidy', required: false)
 if clang_tidy.found()
-  run_target('clang-tidy', command: [clang_tidy, '-p', meson.current_build_dir()] + library_sources)
+  run_target('clang-tidy', command: [clang_tidy, '-p', meson.current_build_dir()] + logspine_sources)
 endif
