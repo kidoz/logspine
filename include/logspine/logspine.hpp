@@ -27,7 +27,7 @@
   do {                                                                                                         \
     auto& logspine_logger__ = (LOGSPINE_LOGGER);                                                               \
     if (logspine_logger__.enabled((LOGSPINE_LEVEL))) {                                                         \
-      logspine_logger__.log((LOGSPINE_LEVEL), (LOGSPINE_MESSAGE), {__VA_ARGS__}, ::logspine::source_location::current()); \
+      logspine_logger__.log_macro_dispatch((LOGSPINE_LEVEL), ::logspine::source_location::current(), (LOGSPINE_MESSAGE) __VA_OPT__(, ) __VA_ARGS__); \
     }                                                                                                          \
   } while (false)
 
