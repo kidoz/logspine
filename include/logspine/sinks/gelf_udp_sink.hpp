@@ -17,6 +17,8 @@ struct gelf_udp_sink_options {
   std::string source_host = "localhost";
   bool reconnect_on_failure = true;
   std::uint32_t max_write_retries = 1;
+  bool compress = false; // Requires zlib support at compile time
+  std::size_t max_chunk_size = 1024; // Defaults to 1024 for safe UDP MTU
 };
 
 class gelf_udp_sink final : public sink {

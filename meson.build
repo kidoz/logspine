@@ -68,6 +68,7 @@ logspine_sources = files(
   'src/level.cpp',
   'src/logger.cpp',
   'src/mdc.cpp',
+  'src/zlib_helper.cpp',
   'src/net/socket.cpp',
   'src/registry.cpp',
   'src/sync_dispatcher.cpp',
@@ -84,10 +85,18 @@ if network_enabled
   logspine_cpp_args += ['-DLOGSPINE_WITH_NETWORK=1']
 endif
 
+zlib_dep = dependency('zlib', required: false)
+logspine_deps = []
+if zlib_dep.found()
+  logspine_deps += zlib_dep
+  logspine_cpp_args += ['-DLOGSPINE_WITH_ZLIB=1']
+endif
+
 logspine_lib = library(
   'logspine',
   logspine_sources,
   cpp_args: logspine_cpp_args,
+  dependencies: logspine_deps,
   include_directories: [inc, private_inc],
   install: true,
 )

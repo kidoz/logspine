@@ -7,11 +7,25 @@
 #include <string>
 #include <thread>
 #include <utility>
+#include <vector>
+#include <cstring>
+#include <atomic>
 
 #include "net/socket.hpp"
 #include "sinks/network_payloads.hpp"
+#include "../zlib_helper.hpp"
 
 namespace logspine::sinks {
+
+namespace {
+
+std::uint64_t generate_gelf_message_id() {
+  static std::atomic<std::uint64_t> counter{0};
+  const auto now = static_cast<std::uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+  return now ^ (counter.fetch_add(1, std::memory_order_relaxed) << 32);
+}
+
+} // namespace
 
 class gelf_udp_sink::transport {
  public:
@@ -38,6 +52,47 @@ void gelf_udp_sink::write(const log_event& event) {
     payload = detail::make_gelf_payload(event, options_.source_host);
   }
 
+#if defined(LOGSPINE_WITH_ZLIB)
+  if (options_.compress) {
+    std::string compressed;
+    if (::logspine::detail::zlib_compress(payload, compressed)) {
+      payload = std::move(compressed);
+    }
+  }
+#endif
+
+  std::vector<std::string> chunks;
+  if (payload.size() > options_.max_chunk_size) {
+    const std::uint64_t message_id = generate_gelf_message_id();
+    const std::size_t max_payload_per_chunk = options_.max_chunk_size - 12; // 12 bytes header
+    const std::size_t total_chunks = (payload.size() + max_payload_per_chunk - 1) / max_payload_per_chunk;
+
+    if (total_chunks > 128) {
+      // Too many chunks for GELF, we drop it or just send what we can. 
+      // GELF spec says max 128 chunks. We will truncate payload to 128 chunks.
+    }
+
+    const std::size_t chunks_to_send = std::min<std::size_t>(total_chunks, 128);
+    for (std::size_t i = 0; i < chunks_to_send; ++i) {
+      std::string chunk;
+      chunk.reserve(options_.max_chunk_size);
+      chunk.push_back('\x1e');
+      chunk.push_back('\x0f');
+      for (int b = 0; b < 8; ++b) {
+        chunk.push_back(static_cast<char>((message_id >> (b * 8)) & 0xFF));
+      }
+      chunk.push_back(static_cast<char>(i));
+      chunk.push_back(static_cast<char>(chunks_to_send));
+
+      std::size_t offset = i * max_payload_per_chunk;
+      std::size_t size = std::min(max_payload_per_chunk, payload.size() - offset);
+      chunk.append(payload.data() + offset, size);
+      chunks.push_back(std::move(chunk));
+    }
+  } else {
+    chunks.push_back(std::move(payload));
+  }
+
   std::unique_lock lock(mutex_);
   ++statistics_.write_attempts;
 
@@ -45,7 +100,9 @@ void gelf_udp_sink::write(const log_event& event) {
   unsigned int backoff_ms = 10;
   for (;;) {
     try {
-      transport_->client.send(payload);
+      for (const auto& chunk : chunks) {
+        transport_->client.send(chunk);
+      }
       last_error_message_.clear();
       return;
     } catch (const std::exception& error) {
