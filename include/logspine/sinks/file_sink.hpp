@@ -14,6 +14,7 @@ struct file_sink_options {
   bool append = true;
   std::size_t max_file_size = 0; // 0 means no rotation
   std::uint32_t max_files = 0;
+  bool compress_rotated = false;
 };
 
 class file_sink final : public sink {
