@@ -1,0 +1,100 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+          - os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+          - os: macos-latest
+            cc: clang
+            cxx: clang++
+          - os: windows-latest
+            cc: cl
+            cxx: cl
+    runs-on: ${{ matrix.os }}
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install Meson and Ninja
+        run: python -m pip install meson ninja
+      - name: Configure
+        run: meson setup build -Dbuild_examples=true -Dbuild_tests=true -Dnetwork=true -Ddeveloper_mode=true
+      - name: Compile
+        run: meson compile -C build
+      - name: Test
+        run: meson test -C build --print-errorlogs
+      - name: Install Smoke Test
+        run: meson install -C build --destdir install-root
+
+  nonetwork:
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install Meson and Ninja
+        run: python -m pip install meson ninja
+      - name: Configure
+        run: meson setup build-nonet -Dbuild_tests=true -Dnetwork=false -Ddeveloper_mode=true
+      - name: Compile
+        run: meson compile -C build-nonet
+      - name: Test
+        run: meson test -C build-nonet --print-errorlogs
+
+  tooling:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install Meson, Ninja, and Clang Tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format clang-tidy
+          python -m pip install meson ninja
+      - name: Configure
+        run: meson setup build-tooling -Dbuild_tests=true -Dnetwork=true -Ddeveloper_mode=true
+      - name: Format Check
+        run: meson compile -C build-tooling format-check
+      - name: Clang-Tidy
+        run: meson compile -C build-tooling clang-tidy
+
+  sanitizer:
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install Meson and Ninja
+        run: python -m pip install meson ninja
+      - name: Configure
+        run: meson setup build-asan -Db_sanitize=address,undefined -Dbuild_tests=true -Ddeveloper_mode=true
+      - name: Compile
+        run: meson compile -C build-asan
+      - name: Test
+        run: meson test -C build-asan --print-errorlogs
