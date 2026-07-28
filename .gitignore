@@ -1,0 +1,31 @@
+# Meson build directories and generated metadata
+/build*/
+/compile_commands.json
+
+# Dependencies downloaded by Meson wraps
+/subprojects/*/
+
+# Compiler and coverage artifacts
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.gcda
+*.gcno
+*.gcov
+
+# Editor and operating-system files
+/.idea/
+/.vscode/
+/.clangd/
+*.swp
+*.swo
+.DS_Store
+
+# Runtime and test output
+*.log
+/coverage/
