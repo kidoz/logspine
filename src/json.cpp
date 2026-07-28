@@ -4,8 +4,8 @@
 #include <charconv>
 #include <chrono>
 #include <cmath>
-#include <cstdio>
 #include <ctime>
+#include <format>
 #include <iomanip>
 #include <limits>
 #include <sstream>
@@ -37,11 +37,9 @@ std::string format_timestamp(std::chrono::system_clock::time_point timestamp) {
   gmtime_r(&raw_time, &utc_time);
 #endif
 
-  char buffer[32];
-  std::snprintf(buffer, sizeof(buffer), "%04d-%02d-%02dT%02d:%02d:%02d.%03lldZ", utc_time.tm_year + 1900,
-                utc_time.tm_mon + 1, utc_time.tm_mday, utc_time.tm_hour, utc_time.tm_min, utc_time.tm_sec,
-                static_cast<long long>(millis));
-  return std::string(buffer);
+  return std::format("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z", utc_time.tm_year + 1900, utc_time.tm_mon + 1,
+                     utc_time.tm_mday, utc_time.tm_hour, utc_time.tm_min, utc_time.tm_sec,
+                     static_cast<long long>(millis));
 }
 
 std::string format_thread_id(std::thread::id thread_id) {
@@ -94,7 +92,7 @@ void append_fields_object(const std::vector<field>& fields, std::string& output)
   output.push_back('}');
 }
 
-}  // namespace
+} // namespace
 
 void append_json_escaped(std::string_view value, std::string& output) {
   static constexpr std::array<char, 16> kHexDigits = {'0', '1', '2', '3', '4', '5', '6', '7',
@@ -103,36 +101,36 @@ void append_json_escaped(std::string_view value, std::string& output) {
   for (const char raw_ch : value) {
     const auto ch = static_cast<unsigned char>(raw_ch);
     switch (ch) {
-      case '"':
-        output += "\\\"";
-        break;
-      case '\\':
-        output += "\\\\";
-        break;
-      case '\b':
-        output += "\\b";
-        break;
-      case '\f':
-        output += "\\f";
-        break;
-      case '\n':
-        output += "\\n";
-        break;
-      case '\r':
-        output += "\\r";
-        break;
-      case '\t':
-        output += "\\t";
-        break;
-      default:
-        if (ch < 0x20U) {
-          output += "\\u00";
-          output.push_back(kHexDigits[(ch >> 4U) & 0x0FU]);
-          output.push_back(kHexDigits[ch & 0x0FU]);
-        } else {
-          output.push_back(static_cast<char>(ch));
-        }
-        break;
+    case '"':
+      output += "\\\"";
+      break;
+    case '\\':
+      output += "\\\\";
+      break;
+    case '\b':
+      output += "\\b";
+      break;
+    case '\f':
+      output += "\\f";
+      break;
+    case '\n':
+      output += "\\n";
+      break;
+    case '\r':
+      output += "\\r";
+      break;
+    case '\t':
+      output += "\\t";
+      break;
+    default:
+      if (ch < 0x20U) {
+        output += "\\u00";
+        output.push_back(kHexDigits[(ch >> 4U) & 0x0FU]);
+        output.push_back(kHexDigits[ch & 0x0FU]);
+      } else {
+        output.push_back(static_cast<char>(ch));
+      }
+      break;
     }
   }
 }
@@ -257,4 +255,4 @@ std::string format_human_readable(const log_event& event) {
   return output;
 }
 
-}  // namespace logspine
+} // namespace logspine
