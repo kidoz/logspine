@@ -139,17 +139,35 @@ TEST_CASE("block overflow policy stalls producers until capacity returns", "[asy
 }
 
 TEST_CASE("drop_oldest overflow policy records dropped events", "[async][overflow]") {
-  auto sink = std::make_shared<counting_sink>();
+  auto sink = std::make_shared<slow_sink>();
   logspine::async_dispatcher dispatcher(std::vector<std::shared_ptr<logspine::sink>>{sink},
                                         logspine::async_options{.queue_capacity = 1,
                                                                 .overflow = logspine::overflow_policy::drop_oldest,
                                                                 .batch_size = 1});
-  for (int index = 0; index < 16; ++index) {
+
+  logspine::log_event first;
+  first.logger_name = "async";
+  first.message = "drop-oldest";
+  dispatcher.dispatch(std::move(first));
+
+  {
+    std::unique_lock lock(sink->mutex);
+    sink->started.wait(lock, [&sink] { return sink->write_started; });
+  }
+
+  // The worker is parked inside the sink, so the capacity-1 queue must overflow.
+  for (int index = 0; index < 4; ++index) {
     logspine::log_event event;
     event.logger_name = "async";
     event.message = "drop-oldest";
     dispatcher.dispatch(std::move(event));
   }
-  dispatcher.flush();
   REQUIRE(dispatcher.dropped_events() > 0U);
+
+  {
+    std::scoped_lock lock(sink->mutex);
+    sink->can_continue = true;
+  }
+  sink->release.notify_all();
+  dispatcher.flush();
 }
