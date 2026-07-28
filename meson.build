@@ -18,7 +18,7 @@ network_enabled = get_option('network')
 
 project_warnings = []
 if cpp.get_id() == 'msvc'
-  project_warnings += ['/W4', '/permissive-']
+  project_warnings += ['/W4', '/permissive-', '/Zc:preprocessor']
   if enable_werror
     project_warnings += ['/WX']
   endif
