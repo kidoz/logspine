@@ -20,6 +20,12 @@ inline std::size_t round_up_to_power_of_2(std::size_t n) {
   return n + 1;
 }
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+// C4324: padding from the cache-line alignas below is intentional.
+#pragma warning(disable : 4324)
+#endif
+
 template <typename T>
 class mpsc_queue {
  public:
@@ -98,5 +104,9 @@ class mpsc_queue {
   alignas(64) std::atomic<std::size_t> head_;
   alignas(64) std::atomic<std::size_t> tail_;
 };
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 } // namespace logspine::detail
