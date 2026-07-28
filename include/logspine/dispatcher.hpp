@@ -7,7 +7,7 @@
 namespace logspine {
 
 class dispatcher {
- public:
+public:
   virtual ~dispatcher() = default;
 
   virtual void dispatch(log_event event) = 0;
@@ -16,4 +16,4 @@ class dispatcher {
   [[nodiscard]] virtual std::uint64_t sink_failures() const noexcept = 0;
 };
 
-}  // namespace logspine
+} // namespace logspine

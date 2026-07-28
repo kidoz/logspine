@@ -17,12 +17,12 @@ struct gelf_udp_sink_options {
   std::string source_host = "localhost";
   bool reconnect_on_failure = true;
   std::uint32_t max_write_retries = 1;
-  bool compress = false; // Requires zlib support at compile time
+  bool compress = false;             // Requires zlib support at compile time
   std::size_t max_chunk_size = 1024; // Defaults to 1024 for safe UDP MTU
 };
 
 class gelf_udp_sink final : public sink {
- public:
+public:
   explicit gelf_udp_sink(gelf_udp_sink_options options);
   ~gelf_udp_sink() override;
 
@@ -35,7 +35,7 @@ class gelf_udp_sink final : public sink {
   [[nodiscard]] network_sink_statistics statistics() const noexcept;
   [[nodiscard]] std::string last_error_message() const;
 
- private:
+private:
   class transport;
 
   void configure_transport();
@@ -48,4 +48,4 @@ class gelf_udp_sink final : public sink {
   std::string last_error_message_;
 };
 
-}  // namespace logspine::sinks
+} // namespace logspine::sinks

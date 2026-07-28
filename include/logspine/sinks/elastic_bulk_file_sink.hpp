@@ -16,16 +16,16 @@ struct elastic_bulk_file_sink_options {
 };
 
 class elastic_bulk_file_sink final : public sink {
- public:
+public:
   explicit elastic_bulk_file_sink(elastic_bulk_file_sink_options options);
 
   void write(const log_event& event) override;
   void flush() override;
 
- private:
+private:
   elastic_bulk_file_sink_options options_;
   std::ofstream stream_;
   mutable std::mutex mutex_;
 };
 
-}  // namespace logspine::sinks
+} // namespace logspine::sinks

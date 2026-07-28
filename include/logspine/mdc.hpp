@@ -9,7 +9,7 @@
 namespace logspine {
 
 class mdc {
- public:
+public:
   static void put(std::string_view key, field::value_type value);
   static void remove(std::string_view key);
   static void clear();
@@ -18,15 +18,15 @@ class mdc {
 };
 
 class scoped_mdc {
- public:
+public:
   scoped_mdc(std::string_view key, field::value_type value);
   ~scoped_mdc();
 
   scoped_mdc(const scoped_mdc&) = delete;
   scoped_mdc& operator=(const scoped_mdc&) = delete;
 
- private:
+private:
   std::string key_;
 };
 
-}  // namespace logspine
+} // namespace logspine

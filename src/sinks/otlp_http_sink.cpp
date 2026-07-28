@@ -26,7 +26,8 @@ std::string make_otlp_json(const log_event& event, const std::string& service_na
 
   bool first = true;
   auto add_string = [&](const char* key, std::string_view val) {
-    if (!first) output += ",";
+    if (!first)
+      output += ",";
     first = false;
     output += "\"";
     output += key;
@@ -38,13 +39,15 @@ std::string make_otlp_json(const log_event& event, const std::string& service_na
   const auto seconds = std::chrono::time_point_cast<std::chrono::nanoseconds>(event.timestamp);
   auto nanos = seconds.time_since_epoch().count();
 
-  if (!first) output += ",";
+  if (!first)
+    output += ",";
   first = false;
   output += "\"timeUnixNano\":\"" + std::to_string(nanos) + "\"";
 
   add_string("severityText", to_string(event.severity));
-  
-  if (!first) output += ",";
+
+  if (!first)
+    output += ",";
   first = false;
   output += "\"severityNumber\":" + std::to_string(static_cast<int>(event.severity) * 4);
 
@@ -56,7 +59,8 @@ std::string make_otlp_json(const log_event& event, const std::string& service_na
   }
 
   // body
-  if (!first) output += ",";
+  if (!first)
+    output += ",";
   first = false;
   output += "\"body\":{\"stringValue\":\"";
   append_json_escaped(event.message, output);
@@ -64,12 +68,14 @@ std::string make_otlp_json(const log_event& event, const std::string& service_na
 
   // attributes
   if (!event.fields.empty()) {
-    if (!first) output += ",";
+    if (!first)
+      output += ",";
     first = false;
     output += "\"attributes\":[";
     bool first_attr = true;
     for (const auto& field : event.fields) {
-      if (!first_attr) output += ",";
+      if (!first_attr)
+        output += ",";
       first_attr = false;
       output += "{\"key\":\"";
       append_json_escaped(field.key(), output);
@@ -98,7 +104,7 @@ std::string make_http_post(const std::string& host, const std::string& path, con
 } // namespace
 
 class otlp_http_sink::transport {
- public:
+public:
   logspine::net::tcp_client client;
 };
 
@@ -115,7 +121,8 @@ otlp_http_sink::otlp_http_sink(otlp_http_sink_options options)
 otlp_http_sink::~otlp_http_sink() = default;
 
 void otlp_http_sink::write(const log_event& event) {
-  if (!should_log(event)) return;
+  if (!should_log(event))
+    return;
 
   std::string payload;
   if (formatter_) {
@@ -135,7 +142,7 @@ void otlp_http_sink::write(const log_event& event) {
     try {
       ensure_connected();
       transport_->client.send_all(http_request);
-      // Note: A true HTTP client would read the response here. 
+      // Note: A true HTTP client would read the response here.
       // For simplicity in this socket transport, we just push the data.
       last_error_message_.clear();
       return;
@@ -192,6 +199,8 @@ void otlp_http_sink::ensure_connected() {
   }
 }
 
-void otlp_http_sink::record_error_message(std::string message) { last_error_message_ = std::move(message); }
+void otlp_http_sink::record_error_message(std::string message) {
+  last_error_message_ = std::move(message);
+}
 
-}  // namespace logspine::sinks
+} // namespace logspine::sinks

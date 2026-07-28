@@ -10,9 +10,13 @@
 namespace {
 
 class recording_sink final : public logspine::sink {
- public:
-  void write(const logspine::log_event& event) override { events.push_back(event); }
-  void flush() override { ++flush_count; }
+public:
+  void write(const logspine::log_event& event) override {
+    events.push_back(event);
+  }
+  void flush() override {
+    ++flush_count;
+  }
 
   std::vector<logspine::log_event> events;
   std::size_t flush_count = 0;
@@ -23,7 +27,7 @@ logspine::field build_counted_field(std::atomic<int>& counter) {
   return logspine::kv("counted", 1);
 }
 
-}  // namespace
+} // namespace
 
 TEST_CASE("level helpers expose text and GELF mappings", "[core][level]") {
   REQUIRE(logspine::to_string(logspine::level::info) == "info");

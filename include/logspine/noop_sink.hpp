@@ -5,9 +5,9 @@
 namespace logspine {
 
 class noop_sink final : public sink {
- public:
+public:
   void write(const log_event&) override {}
   void flush() override {}
 };
 
-}  // namespace logspine
+} // namespace logspine

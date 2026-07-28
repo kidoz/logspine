@@ -26,14 +26,20 @@ void mdc::remove(std::string_view key) {
   }
 }
 
-void mdc::clear() { thread_local_fields.clear(); }
+void mdc::clear() {
+  thread_local_fields.clear();
+}
 
-std::vector<field> mdc::get_all() { return thread_local_fields; }
+std::vector<field> mdc::get_all() {
+  return thread_local_fields;
+}
 
 scoped_mdc::scoped_mdc(std::string_view key, field::value_type value) : key_(key) {
   mdc::put(key_, std::move(value));
 }
 
-scoped_mdc::~scoped_mdc() { mdc::remove(key_); }
+scoped_mdc::~scoped_mdc() {
+  mdc::remove(key_);
+}
 
-}  // namespace logspine
+} // namespace logspine

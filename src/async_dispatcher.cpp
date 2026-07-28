@@ -1,8 +1,8 @@
 #include <logspine/async_dispatcher.hpp>
 
+#include <chrono>
 #include <stdexcept>
 #include <utility>
-#include <chrono>
 
 namespace logspine {
 
@@ -21,9 +21,13 @@ async_dispatcher::async_dispatcher(std::vector<std::shared_ptr<sink>> sinks, asy
   worker_ = std::thread(&async_dispatcher::worker_loop, this);
 }
 
-async_dispatcher::~async_dispatcher() { shutdown(); }
+async_dispatcher::~async_dispatcher() {
+  shutdown();
+}
 
-void async_dispatcher::dispatch(log_event event) { static_cast<void>(enqueue_event(std::move(event))); }
+void async_dispatcher::dispatch(log_event event) {
+  static_cast<void>(enqueue_event(std::move(event)));
+}
 
 void async_dispatcher::flush() {
   const auto flush_id = next_flush_id_.fetch_add(1, std::memory_order_relaxed) + 1;
@@ -34,9 +38,13 @@ void async_dispatcher::flush() {
   }
 }
 
-std::uint64_t async_dispatcher::dropped_events() const noexcept { return dropped_events_.load(std::memory_order_relaxed); }
+std::uint64_t async_dispatcher::dropped_events() const noexcept {
+  return dropped_events_.load(std::memory_order_relaxed);
+}
 
-std::uint64_t async_dispatcher::sink_failures() const noexcept { return sink_failures_.load(std::memory_order_relaxed); }
+std::uint64_t async_dispatcher::sink_failures() const noexcept {
+  return sink_failures_.load(std::memory_order_relaxed);
+}
 
 void async_dispatcher::worker_loop() {
   std::vector<queue_item> batch;
@@ -52,7 +60,8 @@ void async_dispatcher::worker_loop() {
         sleeping_.store(false, std::memory_order_release);
         break;
       }
-      if (stopping_.load(std::memory_order_acquire)) break;
+      if (stopping_.load(std::memory_order_acquire))
+        break;
       std::unique_lock lock(mutex_);
       queue_not_empty_.wait_for(lock, std::chrono::milliseconds(50), [this] {
         return stopping_.load(std::memory_order_acquire) || !sleeping_.load(std::memory_order_acquire);
@@ -62,9 +71,11 @@ void async_dispatcher::worker_loop() {
     if (stopping_.load(std::memory_order_acquire)) {
       while (queue_->dequeue(item)) {
         batch.push_back(std::move(item));
-        if (batch.size() >= options_.batch_size) break;
+        if (batch.size() >= options_.batch_size)
+          break;
       }
-      if (batch.empty()) break;
+      if (batch.empty())
+        break;
     } else {
       batch.push_back(std::move(item));
       while (batch.size() < options_.batch_size && queue_->dequeue(item)) {
@@ -84,7 +95,9 @@ void async_dispatcher::worker_loop() {
         safe_flush_sinks();
         auto fid = std::get<flush_request>(batch_item).id;
         auto current = completed_flush_id_.load(std::memory_order_relaxed);
-        while (current < fid && !completed_flush_id_.compare_exchange_weak(current, fid, std::memory_order_release, std::memory_order_relaxed)) {}
+        while (current < fid && !completed_flush_id_.compare_exchange_weak(current, fid, std::memory_order_release,
+                                                                           std::memory_order_relaxed)) {
+        }
         completed_flush_id_.notify_all();
       }
     }
@@ -114,7 +127,8 @@ bool async_dispatcher::enqueue_event(log_event event) {
   for (;;) {
     if (queue_->enqueue(event)) {
       if (sleeping_.load(std::memory_order_acquire)) {
-        if (!lock.owns_lock()) lock.lock();
+        if (!lock.owns_lock())
+          lock.lock();
         sleeping_.store(false, std::memory_order_release);
         queue_not_empty_.notify_one();
       }
@@ -127,33 +141,34 @@ bool async_dispatcher::enqueue_event(log_event event) {
     }
 
     switch (options_.overflow) {
-      case overflow_policy::drop_newest:
+    case overflow_policy::drop_newest:
+      dropped_events_.fetch_add(1, std::memory_order_relaxed);
+      return false;
+    case overflow_policy::drop_oldest: {
+      queue_item dummy;
+      if (queue_->dequeue(dummy)) {
         dropped_events_.fetch_add(1, std::memory_order_relaxed);
-        return false;
-      case overflow_policy::drop_oldest: {
-        queue_item dummy;
-        if (queue_->dequeue(dummy)) {
-          dropped_events_.fetch_add(1, std::memory_order_relaxed);
-          if (std::holds_alternative<flush_request>(dummy)) {
-            enqueue_flush_request(std::get<flush_request>(dummy).id);
+        if (std::holds_alternative<flush_request>(dummy)) {
+          enqueue_flush_request(std::get<flush_request>(dummy).id);
+        }
+      }
+      break; // retry immediately
+    }
+    case overflow_policy::block: {
+      if (!lock.owns_lock())
+        lock.lock();
+      if (options_.block_retry_timeout.count() > 0) {
+        if (queue_not_full_.wait_for(lock, std::chrono::milliseconds(10)) == std::cv_status::timeout) {
+          if (std::chrono::steady_clock::now() - start >= options_.block_retry_timeout) {
+            dropped_events_.fetch_add(1, std::memory_order_relaxed);
+            return false;
           }
         }
-        break; // retry immediately
+      } else {
+        queue_not_full_.wait_for(lock, std::chrono::milliseconds(10));
       }
-      case overflow_policy::block: {
-        if (!lock.owns_lock()) lock.lock();
-        if (options_.block_retry_timeout.count() > 0) {
-          if (queue_not_full_.wait_for(lock, std::chrono::milliseconds(10)) == std::cv_status::timeout) {
-            if (std::chrono::steady_clock::now() - start >= options_.block_retry_timeout) {
-              dropped_events_.fetch_add(1, std::memory_order_relaxed);
-              return false;
-            }
-          }
-        } else {
-          queue_not_full_.wait_for(lock, std::chrono::milliseconds(10));
-        }
-        break;
-      }
+      break;
+    }
     }
   }
 }
@@ -161,7 +176,9 @@ bool async_dispatcher::enqueue_event(log_event event) {
 void async_dispatcher::enqueue_flush_request(std::uint64_t flush_id) {
   if (stopping_.load(std::memory_order_acquire)) {
     auto current = completed_flush_id_.load(std::memory_order_relaxed);
-    while (current < flush_id && !completed_flush_id_.compare_exchange_weak(current, flush_id, std::memory_order_release, std::memory_order_relaxed)) {}
+    while (current < flush_id && !completed_flush_id_.compare_exchange_weak(
+                                     current, flush_id, std::memory_order_release, std::memory_order_relaxed)) {
+    }
     completed_flush_id_.notify_all();
     return;
   }
@@ -172,7 +189,8 @@ void async_dispatcher::enqueue_flush_request(std::uint64_t flush_id) {
   for (;;) {
     if (queue_->enqueue(item)) {
       if (sleeping_.load(std::memory_order_acquire)) {
-        if (!lock.owns_lock()) lock.lock();
+        if (!lock.owns_lock())
+          lock.lock();
         sleeping_.store(false, std::memory_order_release);
         queue_not_empty_.notify_one();
       }
@@ -181,12 +199,15 @@ void async_dispatcher::enqueue_flush_request(std::uint64_t flush_id) {
 
     if (stopping_.load(std::memory_order_acquire)) {
       auto current = completed_flush_id_.load(std::memory_order_relaxed);
-      while (current < flush_id && !completed_flush_id_.compare_exchange_weak(current, flush_id, std::memory_order_release, std::memory_order_relaxed)) {}
+      while (current < flush_id && !completed_flush_id_.compare_exchange_weak(
+                                       current, flush_id, std::memory_order_release, std::memory_order_relaxed)) {
+      }
       completed_flush_id_.notify_all();
       return;
     }
 
-    if (!lock.owns_lock()) lock.lock();
+    if (!lock.owns_lock())
+      lock.lock();
     queue_not_full_.wait_for(lock, std::chrono::milliseconds(10));
   }
 }
@@ -224,9 +245,11 @@ void async_dispatcher::shutdown() noexcept {
       queue_not_empty_.notify_all();
       queue_not_full_.notify_all();
     }
-    
+
     auto current = completed_flush_id_.load(std::memory_order_relaxed);
-    while (!completed_flush_id_.compare_exchange_weak(current, std::numeric_limits<std::uint64_t>::max(), std::memory_order_release, std::memory_order_relaxed)) {}
+    while (!completed_flush_id_.compare_exchange_weak(current, std::numeric_limits<std::uint64_t>::max(),
+                                                      std::memory_order_release, std::memory_order_relaxed)) {
+    }
     completed_flush_id_.notify_all();
 
     if (worker_.joinable()) {
@@ -235,4 +258,4 @@ void async_dispatcher::shutdown() noexcept {
   }
 }
 
-}  // namespace logspine
+} // namespace logspine

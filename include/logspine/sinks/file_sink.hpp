@@ -18,13 +18,13 @@ struct file_sink_options {
 };
 
 class file_sink final : public sink {
- public:
+public:
   explicit file_sink(file_sink_options options);
 
   void write(const log_event& event) override;
   void flush() override;
 
- private:
+private:
   void rotate_if_needed();
   void open_file();
 
@@ -33,4 +33,4 @@ class file_sink final : public sink {
   mutable std::mutex mutex_;
 };
 
-}  // namespace logspine::sinks
+} // namespace logspine::sinks

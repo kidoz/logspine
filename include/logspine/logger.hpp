@@ -18,7 +18,7 @@
 namespace logspine {
 
 class logger {
- public:
+public:
   logger(std::string name, std::shared_ptr<dispatcher> dispatcher, level minimum_level);
 
   [[nodiscard]] std::string_view name() const noexcept;
@@ -29,11 +29,12 @@ class logger {
   void flush();
 
   void log_macro_dispatch(level severity, source_location location, std::string_view message) {
-    if (enabled(severity)) dispatch(severity, message, {}, location);
+    if (enabled(severity))
+      dispatch(severity, message, {}, location);
   }
 
   template <typename... Fields>
-  requires (sizeof...(Fields) > 0 && (std::is_same_v<std::decay_t<Fields>, field> && ...))
+    requires(sizeof...(Fields) > 0 && (std::is_same_v<std::decay_t<Fields>, field> && ...))
   void log_macro_dispatch(level severity, source_location location, std::string_view message, Fields&&... fields) {
     if (enabled(severity)) {
       std::vector<field> f;
@@ -44,15 +45,14 @@ class logger {
   }
 
   template <typename... Args>
-  requires (sizeof...(Args) > 0 && !(std::is_same_v<std::decay_t<Args>, field> && ...))
+    requires(sizeof...(Args) > 0 && !(std::is_same_v<std::decay_t<Args>, field> && ...))
   void log_macro_dispatch(level severity, source_location location, std::format_string<Args...> fmt, Args&&... args) {
     if (enabled(severity)) {
       dispatch(severity, std::format(fmt, std::forward<Args>(args)...), {}, location);
     }
   }
 
-  void log(level severity, std::string_view message,
-           source_location location = source_location::current());
+  void log(level severity, std::string_view message, source_location location = source_location::current());
   void log(level severity, std::string_view message, std::initializer_list<field> fields,
            source_location location = source_location::current());
   void log(level severity, std::string_view message, std::vector<field> fields,
@@ -78,13 +78,12 @@ class logger {
   void fatal(std::string_view message, std::initializer_list<field> fields,
              source_location location = source_location::current());
 
- private:
-  void dispatch(level severity, std::string_view message, std::vector<field> fields,
-                source_location location);
+private:
+  void dispatch(level severity, std::string_view message, std::vector<field> fields, source_location location);
 
   std::string name_;
   std::shared_ptr<dispatcher> dispatcher_;
   std::atomic<level> minimum_level_;
 };
 
-}  // namespace logspine
+} // namespace logspine

@@ -47,7 +47,7 @@ void close_socket(native_socket socket_handle) noexcept {
 }
 
 class winsock_guard {
- public:
+public:
   winsock_guard() {
 #if defined(_WIN32)
     WSADATA data{};
@@ -66,7 +66,7 @@ class winsock_guard {
 };
 
 class tcp_capture_server {
- public:
+public:
   tcp_capture_server() {
     listener_ = ::socket(AF_INET, SOCK_STREAM, 0);
     if (listener_ == invalid_socket) {
@@ -109,7 +109,9 @@ class tcp_capture_server {
     }
   }
 
-  [[nodiscard]] std::uint16_t port() const noexcept { return port_; }
+  [[nodiscard]] std::uint16_t port() const noexcept {
+    return port_;
+  }
 
   [[nodiscard]] std::optional<std::string> wait_for_payload(std::chrono::milliseconds timeout) {
     std::unique_lock lock(mutex_);
@@ -117,7 +119,7 @@ class tcp_capture_server {
     return payload_;
   }
 
- private:
+private:
 #if defined(_WIN32)
   using socklen_type = int;
 #else
@@ -164,7 +166,7 @@ class tcp_capture_server {
 };
 
 class udp_capture_server {
- public:
+public:
   udp_capture_server() {
     socket_ = ::socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_ == invalid_socket) {
@@ -198,7 +200,9 @@ class udp_capture_server {
     }
   }
 
-  [[nodiscard]] std::uint16_t port() const noexcept { return port_; }
+  [[nodiscard]] std::uint16_t port() const noexcept {
+    return port_;
+  }
 
   [[nodiscard]] std::optional<std::string> wait_for_payload(std::chrono::milliseconds timeout) {
     std::unique_lock lock(mutex_);
@@ -206,7 +210,7 @@ class udp_capture_server {
     return payload_;
   }
 
- private:
+private:
 #if defined(_WIN32)
   using socklen_type = int;
 #else
@@ -218,10 +222,11 @@ class udp_capture_server {
     sockaddr_in peer{};
     socklen_type peer_length = static_cast<socklen_type>(sizeof(peer));
 #if defined(_WIN32)
-    const int received =
-        ::recvfrom(socket_, buffer, static_cast<int>(sizeof(buffer)), 0, reinterpret_cast<sockaddr*>(&peer), &peer_length);
+    const int received = ::recvfrom(socket_, buffer, static_cast<int>(sizeof(buffer)), 0,
+                                    reinterpret_cast<sockaddr*>(&peer), &peer_length);
 #else
-    const auto received = ::recvfrom(socket_, buffer, sizeof(buffer), 0, reinterpret_cast<sockaddr*>(&peer), &peer_length);
+    const auto received =
+        ::recvfrom(socket_, buffer, sizeof(buffer), 0, reinterpret_cast<sockaddr*>(&peer), &peer_length);
 #endif
     if (received > 0) {
       std::scoped_lock lock(mutex_);
@@ -247,7 +252,7 @@ logspine::log_event make_event() {
   return event;
 }
 
-}  // namespace
+} // namespace
 
 TEST_CASE("tcp json-lines sink delivers records to a loopback receiver", "[sinks][network][tcp]") {
   winsock_guard winsock;

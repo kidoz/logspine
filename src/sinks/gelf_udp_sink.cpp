@@ -1,19 +1,19 @@
 #include <logspine/sinks/gelf_udp_sink.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <cstring>
 #include <exception>
 #include <stdexcept>
 #include <string>
 #include <thread>
 #include <utility>
 #include <vector>
-#include <cstring>
-#include <atomic>
 
+#include "../zlib_helper.hpp"
 #include "net/socket.hpp"
 #include "sinks/network_payloads.hpp"
-#include "../zlib_helper.hpp"
 
 namespace logspine::sinks {
 
@@ -28,7 +28,7 @@ std::uint64_t generate_gelf_message_id() {
 } // namespace
 
 class gelf_udp_sink::transport {
- public:
+public:
   logspine::net::udp_client client;
 };
 
@@ -43,7 +43,8 @@ gelf_udp_sink::gelf_udp_sink(gelf_udp_sink_options options)
 gelf_udp_sink::~gelf_udp_sink() = default;
 
 void gelf_udp_sink::write(const log_event& event) {
-  if (!should_log(event)) return;
+  if (!should_log(event))
+    return;
 
   std::string payload;
   if (formatter_) {
@@ -68,7 +69,7 @@ void gelf_udp_sink::write(const log_event& event) {
     const std::size_t total_chunks = (payload.size() + max_payload_per_chunk - 1) / max_payload_per_chunk;
 
     if (total_chunks > 128) {
-      // Too many chunks for GELF, we drop it or just send what we can. 
+      // Too many chunks for GELF, we drop it or just send what we can.
       // GELF spec says max 128 chunks. We will truncate payload to 128 chunks.
     }
 
@@ -152,6 +153,8 @@ std::string gelf_udp_sink::last_error_message() const {
   return last_error_message_;
 }
 
-void gelf_udp_sink::record_error_message(std::string message) { last_error_message_ = std::move(message); }
+void gelf_udp_sink::record_error_message(std::string message) {
+  last_error_message_ = std::move(message);
+}
 
-}  // namespace logspine::sinks
+} // namespace logspine::sinks

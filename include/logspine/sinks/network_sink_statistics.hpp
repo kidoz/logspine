@@ -10,4 +10,4 @@ struct network_sink_statistics {
   std::uint64_t reconnect_attempts = 0;
 };
 
-}  // namespace logspine::sinks
+} // namespace logspine::sinks

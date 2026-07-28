@@ -4,8 +4,8 @@
 #include <system_error>
 #include <utility>
 
-#include <logspine/json.hpp>
 #include "../zlib_helper.hpp"
+#include <logspine/json.hpp>
 
 namespace logspine::sinks {
 
@@ -24,10 +24,12 @@ void file_sink::open_file() {
 }
 
 void file_sink::rotate_if_needed() {
-  if (options_.max_file_size == 0) return;
+  if (options_.max_file_size == 0)
+    return;
 
   const auto current_size = stream_.tellp();
-  if (current_size < 0 || static_cast<std::size_t>(current_size) < options_.max_file_size) return;
+  if (current_size < 0 || static_cast<std::size_t>(current_size) < options_.max_file_size)
+    return;
 
   stream_.close();
 
@@ -101,7 +103,8 @@ void file_sink::rotate_if_needed() {
 }
 
 void file_sink::write(const log_event& event) {
-  if (!should_log(event)) return;
+  if (!should_log(event))
+    return;
 
   std::scoped_lock lock(mutex_);
   rotate_if_needed();
@@ -122,4 +125,4 @@ void file_sink::flush() {
   stream_.flush();
 }
 
-}  // namespace logspine::sinks
+} // namespace logspine::sinks

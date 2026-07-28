@@ -5,9 +5,9 @@
 namespace logspine {
 
 class filter {
- public:
+public:
   virtual ~filter() = default;
   virtual bool accept(const log_event& event) = 0;
 };
 
-}  // namespace logspine
+} // namespace logspine

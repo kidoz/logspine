@@ -31,8 +31,12 @@ void logger_registry::set_level(level value) {
   }
 }
 
-level logger_registry::level_threshold() const noexcept { return minimum_level_.load(std::memory_order_relaxed); }
+level logger_registry::level_threshold() const noexcept {
+  return minimum_level_.load(std::memory_order_relaxed);
+}
 
-void logger_registry::flush() { dispatcher_->flush(); }
+void logger_registry::flush() {
+  dispatcher_->flush();
+}
 
-}  // namespace logspine
+} // namespace logspine

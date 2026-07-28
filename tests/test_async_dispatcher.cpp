@@ -13,22 +13,28 @@
 namespace {
 
 class counting_sink final : public logspine::sink {
- public:
-  void write(const logspine::log_event&) override { ++writes; }
-  void flush() override { ++flushes; }
+public:
+  void write(const logspine::log_event&) override {
+    ++writes;
+  }
+  void flush() override {
+    ++flushes;
+  }
 
   std::atomic<int> writes{0};
   std::atomic<int> flushes{0};
 };
 
 class throwing_sink final : public logspine::sink {
- public:
-  void write(const logspine::log_event&) override { throw std::runtime_error("sink failure"); }
+public:
+  void write(const logspine::log_event&) override {
+    throw std::runtime_error("sink failure");
+  }
   void flush() override {}
 };
 
 class slow_sink final : public logspine::sink {
- public:
+public:
   void write(const logspine::log_event&) override {
     {
       std::scoped_lock lock(mutex);
@@ -49,12 +55,14 @@ class slow_sink final : public logspine::sink {
   bool can_continue = false;
 };
 
-}  // namespace
+} // namespace
 
 TEST_CASE("async dispatcher flushes accepted events", "[async][flush]") {
   auto sink = std::make_shared<counting_sink>();
   logspine::async_dispatcher dispatcher(std::vector<std::shared_ptr<logspine::sink>>{sink},
-                                        logspine::async_options{.queue_capacity = 8, .overflow = logspine::overflow_policy::drop_newest, .batch_size = 4});
+                                        logspine::async_options{.queue_capacity = 8,
+                                                                .overflow = logspine::overflow_policy::drop_newest,
+                                                                .batch_size = 4});
 
   for (int index = 0; index < 4; ++index) {
     logspine::log_event event;
@@ -70,7 +78,9 @@ TEST_CASE("async dispatcher flushes accepted events", "[async][flush]") {
 TEST_CASE("async dispatcher counts sink failures", "[async][errors]") {
   auto sink = std::make_shared<throwing_sink>();
   logspine::async_dispatcher dispatcher(std::vector<std::shared_ptr<logspine::sink>>{sink},
-                                        logspine::async_options{.queue_capacity = 2, .overflow = logspine::overflow_policy::drop_newest, .batch_size = 1});
+                                        logspine::async_options{.queue_capacity = 2,
+                                                                .overflow = logspine::overflow_policy::drop_newest,
+                                                                .batch_size = 1});
   logspine::log_event event;
   event.logger_name = "async";
   event.message = "throws";
@@ -81,8 +91,9 @@ TEST_CASE("async dispatcher counts sink failures", "[async][errors]") {
 
 TEST_CASE("block overflow policy stalls producers until capacity returns", "[async][overflow]") {
   auto sink = std::make_shared<slow_sink>();
-  logspine::async_dispatcher dispatcher(std::vector<std::shared_ptr<logspine::sink>>{sink},
-                                        logspine::async_options{.queue_capacity = 1, .overflow = logspine::overflow_policy::block, .batch_size = 1});
+  logspine::async_dispatcher dispatcher(
+      std::vector<std::shared_ptr<logspine::sink>>{sink},
+      logspine::async_options{.queue_capacity = 1, .overflow = logspine::overflow_policy::block, .batch_size = 1});
 
   logspine::log_event first;
   first.logger_name = "async";
@@ -130,7 +141,9 @@ TEST_CASE("block overflow policy stalls producers until capacity returns", "[asy
 TEST_CASE("drop_oldest overflow policy records dropped events", "[async][overflow]") {
   auto sink = std::make_shared<counting_sink>();
   logspine::async_dispatcher dispatcher(std::vector<std::shared_ptr<logspine::sink>>{sink},
-                                        logspine::async_options{.queue_capacity = 1, .overflow = logspine::overflow_policy::drop_oldest, .batch_size = 1});
+                                        logspine::async_options{.queue_capacity = 1,
+                                                                .overflow = logspine::overflow_policy::drop_oldest,
+                                                                .batch_size = 1});
   for (int index = 0; index < 16; ++index) {
     logspine::log_event event;
     event.logger_name = "async";

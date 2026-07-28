@@ -16,7 +16,7 @@ std::string read_all(const std::filesystem::path& path) {
   return std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
 }
 
-}  // namespace
+} // namespace
 
 TEST_CASE("file and elastic bulk sinks emit expected record shapes", "[sinks][file]") {
   const auto temp_dir = std::filesystem::temp_directory_path() / "logspine-tests";
@@ -42,8 +42,7 @@ TEST_CASE("file and elastic bulk sinks emit expected record shapes", "[sinks][fi
 
   const auto bulk_path = temp_dir / "bulk.ndjson";
   {
-    logspine::sinks::elastic_bulk_file_sink sink(
-        {.path = bulk_path, .index_name = "logs-index", .append = false});
+    logspine::sinks::elastic_bulk_file_sink sink({.path = bulk_path, .index_name = "logs-index", .append = false});
     sink.write(event);
     sink.flush();
   }
@@ -75,14 +74,14 @@ TEST_CASE("network payload helpers keep deterministic framing", "[sinks][payload
 }
 
 class custom_formatter : public logspine::formatter {
- public:
+public:
   void format(const logspine::log_event& event, std::string& dest) override {
     dest = "CUSTOM_FORMAT: " + event.message + "\n";
   }
 };
 
 class test_filter : public logspine::filter {
- public:
+public:
   bool accept(const logspine::log_event& event) override {
     return event.severity >= logspine::level::warn;
   }
@@ -129,7 +128,11 @@ TEST_CASE("file sink rotates files when size limit is reached", "[sinks][file][r
   event.severity = logspine::level::info;
 
   {
-    logspine::sinks::file_sink sink({.path = file_path, .format = logspine::sink_format::human, .append = false, .max_file_size = 100, .max_files = 2});
+    logspine::sinks::file_sink sink({.path = file_path,
+                                     .format = logspine::sink_format::human,
+                                     .append = false,
+                                     .max_file_size = 100,
+                                     .max_files = 2});
 
     sink.write(event);
     sink.write(event);

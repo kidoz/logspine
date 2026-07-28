@@ -14,7 +14,7 @@
 namespace logspine::sinks {
 
 class tcp_json_lines_sink::transport {
- public:
+public:
   logspine::net::tcp_client client;
 };
 
@@ -31,7 +31,8 @@ tcp_json_lines_sink::tcp_json_lines_sink(tcp_json_lines_sink_options options)
 tcp_json_lines_sink::~tcp_json_lines_sink() = default;
 
 void tcp_json_lines_sink::write(const log_event& event) {
-  if (!should_log(event)) return;
+  if (!should_log(event))
+    return;
 
   std::string payload;
   if (formatter_) {
@@ -104,6 +105,8 @@ void tcp_json_lines_sink::ensure_connected() {
   }
 }
 
-void tcp_json_lines_sink::record_error_message(std::string message) { last_error_message_ = std::move(message); }
+void tcp_json_lines_sink::record_error_message(std::string message) {
+  last_error_message_ = std::move(message);
+}
 
-}  // namespace logspine::sinks
+} // namespace logspine::sinks

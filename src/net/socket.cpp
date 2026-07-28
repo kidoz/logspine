@@ -15,8 +15,8 @@
 #include <ws2tcpip.h>
 #pragma comment(lib, "Ws2_32.lib")
 #else
-#include <cerrno>
 #include <arpa/inet.h>
+#include <cerrno>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -27,7 +27,7 @@ namespace logspine::net {
 namespace {
 
 class winsock_runtime {
- public:
+public:
   winsock_runtime() {
 #if defined(_WIN32)
     WSADATA data{};
@@ -84,7 +84,8 @@ void set_socket_timeout(native_socket socket_handle, int timeout_ms) noexcept {
   struct timeval tv{};
   tv.tv_sec = timeout_ms / 1000;
   tv.tv_usec = (timeout_ms % 1000) * 1000;
-  setsockopt(socket_handle, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const void*>(&tv), static_cast<socklen_t>(sizeof(tv)));
+  setsockopt(socket_handle, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const void*>(&tv),
+             static_cast<socklen_t>(sizeof(tv)));
 #endif
 }
 
@@ -111,7 +112,8 @@ native_socket connect_tcp_socket(const std::string& host, std::uint16_t port) {
 
   native_socket socket_handle = invalid_socket;
   for (addrinfo* current = result; current != nullptr; current = current->ai_next) {
-    socket_handle = static_cast<native_socket>(::socket(current->ai_family, current->ai_socktype, current->ai_protocol));
+    socket_handle =
+        static_cast<native_socket>(::socket(current->ai_family, current->ai_socktype, current->ai_protocol));
     if (socket_handle == invalid_socket) {
       continue;
     }
@@ -147,7 +149,8 @@ std::pair<native_socket, std::vector<unsigned char>> configure_udp_socket(const 
   }
 
   for (addrinfo* current = result; current != nullptr; current = current->ai_next) {
-    const auto socket_handle = static_cast<native_socket>(::socket(current->ai_family, current->ai_socktype, current->ai_protocol));
+    const auto socket_handle =
+        static_cast<native_socket>(::socket(current->ai_family, current->ai_socktype, current->ai_protocol));
     if (socket_handle == invalid_socket) {
       continue;
     }
@@ -163,10 +166,12 @@ std::pair<native_socket, std::vector<unsigned char>> configure_udp_socket(const 
   throw std::runtime_error("udp socket creation failed");
 }
 
-}  // namespace
+} // namespace
 
 tcp_client::tcp_client() = default;
-tcp_client::~tcp_client() { close(); }
+tcp_client::~tcp_client() {
+  close();
+}
 
 void tcp_client::connect(const std::string& host, std::uint16_t port) {
   close();
@@ -199,7 +204,9 @@ void tcp_client::send_all(std::string_view payload) {
   }
 }
 
-bool tcp_client::connected() const noexcept { return connected_; }
+bool tcp_client::connected() const noexcept {
+  return connected_;
+}
 
 void tcp_client::close() noexcept {
   if (!connected_) {
@@ -212,7 +219,9 @@ void tcp_client::close() noexcept {
 }
 
 udp_client::udp_client() = default;
-udp_client::~udp_client() { close(); }
+udp_client::~udp_client() {
+  close();
+}
 
 void udp_client::configure(const std::string& host, std::uint16_t port) {
   close();
@@ -228,9 +237,9 @@ void udp_client::send(std::string_view payload) {
 
   for (;;) {
 #if defined(_WIN32)
-    const auto sent = ::sendto(static_cast<SOCKET>(socket_handle_), payload.data(), static_cast<int>(payload.size()), 0,
-                               reinterpret_cast<const sockaddr*>(destination_.data()),
-                               static_cast<int>(destination_.size()));
+    const auto sent =
+        ::sendto(static_cast<SOCKET>(socket_handle_), payload.data(), static_cast<int>(payload.size()), 0,
+                 reinterpret_cast<const sockaddr*>(destination_.data()), static_cast<int>(destination_.size()));
 #else
     const auto destination_size = static_cast<socklen_t>(destination_.size());
     const auto sent = ::sendto(socket_handle_, payload.data(), payload.size(), 0,
@@ -247,7 +256,9 @@ void udp_client::send(std::string_view payload) {
   }
 }
 
-bool udp_client::configured() const noexcept { return !destination_.empty(); }
+bool udp_client::configured() const noexcept {
+  return !destination_.empty();
+}
 
 void udp_client::close() noexcept {
   if (destination_.empty()) {
@@ -259,7 +270,7 @@ void udp_client::close() noexcept {
   socket_handle_ = static_cast<decltype(socket_handle_)>(invalid_socket);
 }
 
-}  // namespace logspine::net
+} // namespace logspine::net
 
 #else
 
@@ -267,17 +278,27 @@ namespace logspine::net {
 
 tcp_client::tcp_client() = default;
 tcp_client::~tcp_client() = default;
-void tcp_client::connect(const std::string&, std::uint16_t) { throw std::runtime_error("network support is disabled"); }
-void tcp_client::send_all(std::string_view) { throw std::runtime_error("network support is disabled"); }
-bool tcp_client::connected() const noexcept { return false; }
+void tcp_client::connect(const std::string&, std::uint16_t) {
+  throw std::runtime_error("network support is disabled");
+}
+void tcp_client::send_all(std::string_view) {
+  throw std::runtime_error("network support is disabled");
+}
+bool tcp_client::connected() const noexcept {
+  return false;
+}
 void tcp_client::close() noexcept {}
 
 udp_client::udp_client() = default;
 udp_client::~udp_client() = default;
-void udp_client::configure(const std::string&, std::uint16_t) { throw std::runtime_error("network support is disabled"); }
-void udp_client::send(std::string_view) { throw std::runtime_error("network support is disabled"); }
+void udp_client::configure(const std::string&, std::uint16_t) {
+  throw std::runtime_error("network support is disabled");
+}
+void udp_client::send(std::string_view) {
+  throw std::runtime_error("network support is disabled");
+}
 void udp_client::close() noexcept {}
 
-}  // namespace logspine::net
+} // namespace logspine::net
 
 #endif

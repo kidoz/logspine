@@ -9,7 +9,8 @@ namespace logspine::sinks {
 console_sink::console_sink(console_sink_options options) : options_(options) {}
 
 void console_sink::write(const log_event& event) {
-  if (!should_log(event)) return;
+  if (!should_log(event))
+    return;
 
   std::scoped_lock lock(mutex_);
   auto& stream = select_stream(event.severity);
@@ -37,4 +38,4 @@ std::ostream& console_sink::select_stream(level severity) const noexcept {
   return std::cout;
 }
 
-}  // namespace logspine::sinks
+} // namespace logspine::sinks

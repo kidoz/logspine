@@ -10,9 +10,9 @@
 #include <variant>
 #include <vector>
 
+#include <logspine/detail/mpsc_queue.hpp>
 #include <logspine/dispatcher.hpp>
 #include <logspine/sink.hpp>
-#include <logspine/detail/mpsc_queue.hpp>
 
 namespace logspine {
 
@@ -30,7 +30,7 @@ struct async_options {
 };
 
 class async_dispatcher final : public dispatcher {
- public:
+public:
   async_dispatcher(std::vector<std::shared_ptr<sink>> sinks, async_options options = {});
   ~async_dispatcher() override;
 
@@ -42,7 +42,7 @@ class async_dispatcher final : public dispatcher {
   [[nodiscard]] std::uint64_t dropped_events() const noexcept override;
   [[nodiscard]] std::uint64_t sink_failures() const noexcept override;
 
- private:
+private:
   struct flush_request {
     std::uint64_t id = 0;
   };
@@ -74,4 +74,4 @@ class async_dispatcher final : public dispatcher {
   std::atomic<std::uint64_t> sink_failures_{0};
 };
 
-}  // namespace logspine
+} // namespace logspine

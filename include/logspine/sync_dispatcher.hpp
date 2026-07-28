@@ -10,7 +10,7 @@
 namespace logspine {
 
 class sync_dispatcher final : public dispatcher {
- public:
+public:
   explicit sync_dispatcher(std::vector<std::shared_ptr<sink>> sinks);
 
   void dispatch(log_event event) override;
@@ -18,10 +18,10 @@ class sync_dispatcher final : public dispatcher {
   [[nodiscard]] std::uint64_t dropped_events() const noexcept override;
   [[nodiscard]] std::uint64_t sink_failures() const noexcept override;
 
- private:
+private:
   std::vector<std::shared_ptr<sink>> sinks_;
   mutable std::mutex mutex_;
   std::uint64_t sink_failures_ = 0;
 };
 
-}  // namespace logspine
+} // namespace logspine

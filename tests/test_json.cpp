@@ -16,7 +16,8 @@ TEST_CASE("event JSON serialization is deterministic enough for tests", "[json][
   event.severity = logspine::level::warn;
   event.logger_name = "checkout";
   event.message = "escaped \"message\"";
-  event.fields = {logspine::kv("customer", "alice"), logspine::kv("amount", 19.95), logspine::kv("invalid", std::nan(""))};
+  event.fields = {logspine::kv("customer", "alice"), logspine::kv("amount", 19.95),
+                  logspine::kv("invalid", std::nan(""))};
 
   const auto json = logspine::to_json(event);
   REQUIRE(json.find("\"level\":\"warn\"") != std::string::npos);

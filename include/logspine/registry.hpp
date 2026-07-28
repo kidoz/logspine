@@ -14,7 +14,7 @@
 namespace logspine {
 
 class logger_registry {
- public:
+public:
   logger_registry(std::shared_ptr<dispatcher> dispatcher, level minimum_level);
 
   [[nodiscard]] std::shared_ptr<logger> get(std::string_view name);
@@ -22,11 +22,11 @@ class logger_registry {
   [[nodiscard]] level level_threshold() const noexcept;
   void flush();
 
- private:
+private:
   std::shared_ptr<dispatcher> dispatcher_;
   std::atomic<level> minimum_level_;
   mutable std::mutex mutex_;
   std::unordered_map<std::string, std::shared_ptr<logger>> loggers_;
 };
 
-}  // namespace logspine
+} // namespace logspine

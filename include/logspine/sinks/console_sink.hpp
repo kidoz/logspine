@@ -13,17 +13,17 @@ struct console_sink_options {
 };
 
 class console_sink final : public sink {
- public:
+public:
   explicit console_sink(console_sink_options options = {});
 
   void write(const log_event& event) override;
   void flush() override;
 
- private:
+private:
   [[nodiscard]] std::ostream& select_stream(level severity) const noexcept;
 
   console_sink_options options_;
   mutable std::mutex mutex_;
 };
 
-}  // namespace logspine::sinks
+} // namespace logspine::sinks

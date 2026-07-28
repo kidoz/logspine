@@ -28,11 +28,13 @@ void sync_dispatcher::flush() {
   }
 }
 
-std::uint64_t sync_dispatcher::dropped_events() const noexcept { return 0; }
+std::uint64_t sync_dispatcher::dropped_events() const noexcept {
+  return 0;
+}
 
 std::uint64_t sync_dispatcher::sink_failures() const noexcept {
   std::scoped_lock lock(mutex_);
   return sink_failures_;
 }
 
-}  // namespace logspine
+} // namespace logspine

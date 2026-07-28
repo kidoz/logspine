@@ -22,7 +22,7 @@ struct otlp_http_sink_options {
 };
 
 class otlp_http_sink final : public sink {
- public:
+public:
   explicit otlp_http_sink(otlp_http_sink_options options);
   ~otlp_http_sink() override;
 
@@ -37,7 +37,7 @@ class otlp_http_sink final : public sink {
   [[nodiscard]] network_sink_statistics statistics() const noexcept;
   [[nodiscard]] std::string last_error_message() const;
 
- private:
+private:
   class transport;
 
   void ensure_connected();
@@ -50,4 +50,4 @@ class otlp_http_sink final : public sink {
   std::string last_error_message_;
 };
 
-}  // namespace logspine::sinks
+} // namespace logspine::sinks

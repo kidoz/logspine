@@ -10,4 +10,4 @@ namespace logspine {
 
 inline constexpr bool network_enabled = LOGSPINE_CONFIG_NETWORK != 0;
 
-}  // namespace logspine
+} // namespace logspine

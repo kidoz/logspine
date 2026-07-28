@@ -18,7 +18,7 @@ std::string make_action_line(const std::string& index_name) {
   return output;
 }
 
-}  // namespace
+} // namespace
 
 elastic_bulk_file_sink::elastic_bulk_file_sink(elastic_bulk_file_sink_options options) : options_(std::move(options)) {
   auto open_mode = std::ios::out;
@@ -30,7 +30,8 @@ elastic_bulk_file_sink::elastic_bulk_file_sink(elastic_bulk_file_sink_options op
 }
 
 void elastic_bulk_file_sink::write(const log_event& event) {
-  if (!should_log(event)) return;
+  if (!should_log(event))
+    return;
 
   std::scoped_lock lock(mutex_);
   stream_ << make_action_line(options_.index_name);
@@ -48,4 +49,4 @@ void elastic_bulk_file_sink::flush() {
   stream_.flush();
 }
 
-}  // namespace logspine::sinks
+} // namespace logspine::sinks

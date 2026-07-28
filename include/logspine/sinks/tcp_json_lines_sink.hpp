@@ -20,7 +20,7 @@ struct tcp_json_lines_sink_options {
 };
 
 class tcp_json_lines_sink final : public sink {
- public:
+public:
   explicit tcp_json_lines_sink(tcp_json_lines_sink_options options);
   ~tcp_json_lines_sink() override;
 
@@ -34,7 +34,7 @@ class tcp_json_lines_sink final : public sink {
   [[nodiscard]] network_sink_statistics statistics() const noexcept;
   [[nodiscard]] std::string last_error_message() const;
 
- private:
+private:
   class transport;
 
   void ensure_connected();
@@ -47,4 +47,4 @@ class tcp_json_lines_sink final : public sink {
   std::string last_error_message_;
 };
 
-}  // namespace logspine::sinks
+} // namespace logspine::sinks

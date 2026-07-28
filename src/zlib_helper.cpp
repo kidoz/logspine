@@ -2,8 +2,8 @@
 
 #if defined(LOGSPINE_WITH_ZLIB)
 
-#include <zlib.h>
 #include <stdexcept>
+#include <zlib.h>
 
 namespace logspine::detail {
 
