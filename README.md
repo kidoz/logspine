@@ -7,7 +7,38 @@
 [![Version](https://img.shields.io/badge/version-0.1.0-informational.svg)](meson.build)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-LogSpine is a C++23 structured logging library with a small facade, pluggable sinks, bounded async delivery, and a Meson build. It is designed for Linux, Windows, and macOS, with local sinks implemented first and network sinks exposed behind the same public API.
+LogSpine is a C++23 structured logging library with a small facade, pluggable
+sinks, bounded async delivery, and a Meson build. It is designed for Linux,
+Windows, and macOS, with local sinks implemented first and network sinks exposed
+behind the same public API.
+
+## Documentation
+
+**Tutorials**
+
+- [Getting started](docs/tutorials/getting-started.md) — build the library and
+  emit your first log records.
+
+**How-to guides**
+
+- [Build and install](docs/how-to/build-and-install.md)
+- [Run tests](docs/how-to/run-tests.md)
+- [Run formatting and static analysis](docs/how-to/run-tooling.md)
+- [Run benchmarks](docs/how-to/run-benchmarks.md)
+- [Configure sinks](docs/how-to/configure-sinks.md)
+
+**Reference**
+
+- [Public API](docs/reference/public-api.md)
+- [Sinks and options](docs/reference/sinks.md)
+- [Build options](docs/reference/build-options.md)
+- [Test suite](docs/reference/test-suite.md)
+
+**Explanation**
+
+- [Architecture](docs/explanation/architecture.md)
+- [Performance](docs/explanation/performance.md)
+- [Research notes](docs/explanation/research.md)
 
 ## Features
 
@@ -16,57 +47,11 @@ LogSpine is a C++23 structured logging library with a small facade, pluggable si
 - Deterministic JSON serialization with safe escaping.
 - `sync_dispatcher` and bounded `async_dispatcher`.
 - Console, file, and Elasticsearch bulk NDJSON sinks.
-- Optional TCP JSON Lines and Graylog GELF UDP sinks through the same sink interface.
+- Optional TCP JSON Lines, Graylog GELF UDP, and OTLP/HTTP JSON sinks through the
+  same sink interface.
 - Catch2 v3 test suite through a Meson wrap.
 
-## Build
-
-Tests use Catch2 v3 via the Meson wrap at `subprojects/catch2.wrap`.
-
-Meson options used by the project:
-
-- `-Dbuild_examples=true|false`
-- `-Dbuild_tests=true|false`
-- `-Dbuild_benchmarks=true|false`
-- `-Dnetwork=true|false`
-- `-Ddeveloper_mode=true|false`
-
-```bash
-meson setup build -Dbuild_examples=true -Dbuild_tests=true -Ddeveloper_mode=true
-meson compile -C build
-meson test -C build --print-errorlogs
-```
-
-Disable network sinks:
-
-```bash
-meson setup build-nonet -Dnetwork=false -Dbuild_tests=true
-meson compile -C build-nonet
-meson test -C build-nonet --print-errorlogs
-```
-
-Sanitizer-friendly setup on GCC or Clang:
-
-```bash
-meson setup build-asan -Db_sanitize=address,undefined -Dbuild_tests=true -Ddeveloper_mode=true
-meson compile -C build-asan
-meson test -C build-asan --print-errorlogs
-```
-
-Tooling targets when the tools are installed:
-
-```bash
-meson compile -C build format-check
-meson compile -C build clang-tidy
-```
-
-Install smoke test:
-
-```bash
-meson install -C build --destdir install-root
-```
-
-## Quick Start
+## Quick start
 
 ```cpp
 #include <memory>
@@ -96,28 +81,34 @@ int main() {
 }
 ```
 
+For a complete walkthrough, see [Getting started](docs/tutorials/getting-started.md).
+
+## Build
+
+Network builds require the libcurl development files and nlohmann/json headers.
+Tests use Catch2 v3 through the Meson wrap at `subprojects/catch2.wrap`.
+
+```bash
+meson setup build -Dbuild_examples=true -Dbuild_tests=true -Ddeveloper_mode=true
+meson compile -C build
+meson test -C build --print-errorlogs
+```
+
+To build without network sinks:
+
+```bash
+meson setup build-nonet -Dnetwork=false -Dbuild_tests=true
+meson compile -C build-nonet
+meson test -C build-nonet --print-errorlogs
+```
+
+See [Build and install](docs/how-to/build-and-install.md) for the full option
+set and sanitizer, tooling, and install commands.
+
 ## Examples
 
 - `examples/basic.cpp`: minimal console logging with `sync_dispatcher`
 - `examples/structured.cpp`: structured JSON-lines logging with `async_dispatcher`
 - `examples/elastic_bulk_file.cpp`: writes offline Elasticsearch bulk NDJSON
-- `examples/graylog_gelf_udp.cpp`: demonstrates GELF UDP configuration for a Graylog listener
-
-## Integration Overview
-
-LogSpine currently ships local sinks for console and files, an offline Elasticsearch bulk NDJSON sink, a TCP JSON-lines sink suitable for Logstash-style collectors, and a GELF UDP sink for Graylog.
-
-## Network Sink Observability
-
-The network sinks expose retry configuration and sink-local stats:
-
-- `tcp_json_lines_sink_options::max_write_retries`
-- `gelf_udp_sink_options::max_write_retries`
-- `statistics()` for write attempts, write failures, and reconnect attempts
-- `last_error_message()` for the most recent transport error
-
-## Architecture Summary
-
-Application code talks to `logger` instances produced by `logger_registry`. Loggers gate disabled levels before building `log_event` payloads, then forward accepted events to a `dispatcher`. Dispatchers serialize access to one or more `sink` implementations, either inline (`sync_dispatcher`) or through a bounded queue (`async_dispatcher`).
-
-See [docs/architecture.md](docs/architecture.md), [docs/integrations.md](docs/integrations.md), [docs/performance.md](docs/performance.md), [docs/testing.md](docs/testing.md), and [docs/research.md](docs/research.md).
+- `examples/graylog_gelf_udp.cpp`: demonstrates GELF UDP configuration for a
+  Graylog listener
