@@ -40,9 +40,6 @@ public:
 private:
   class transport;
 
-  void ensure_connected();
-  void record_error_message(std::string message);
-
   otlp_http_sink_options options_;
   std::unique_ptr<transport> transport_;
   mutable std::mutex mutex_;
