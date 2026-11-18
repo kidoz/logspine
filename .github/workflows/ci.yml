@@ -37,6 +37,21 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
       - name: Install Meson and Ninja
         run: python -m pip install meson ninja
+      - name: Install OTLP dependencies on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev nlohmann-json3-dev
+      - name: Install OTLP dependencies on macOS
+        if: runner.os == 'macOS'
+        run: brew install nlohmann-json
+      - name: Install OTLP dependencies on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          vcpkg install curl:x64-windows nlohmann-json:x64-windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $prefix = Join-Path $env:VCPKG_INSTALLATION_ROOT 'installed/x64-windows'
+          "CMAKE_PREFIX_PATH=$prefix" >> $env:GITHUB_ENV
+          "$prefix/bin" >> $env:GITHUB_PATH
       - name: Configure
         run: meson setup build -Dbuild_examples=true -Dbuild_tests=true -Dnetwork=true -Ddeveloper_mode=true ${{ matrix.meson_args }}
       - name: Compile
@@ -75,7 +90,7 @@ jobs:
       - name: Install Meson, Ninja, and Clang Tooling
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-tidy
+          sudo apt-get install -y clang-tidy libcurl4-openssl-dev nlohmann-json3-dev
           python -m pip install meson ninja clang-format==22.1.8
       - name: Configure
         run: meson setup build-tooling -Dbuild_tests=true -Dnetwork=true -Ddeveloper_mode=true
@@ -96,6 +111,8 @@ jobs:
           python-version: '3.x'
       - name: Install Meson and Ninja
         run: python -m pip install meson ninja
+      - name: Install OTLP dependencies
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev nlohmann-json3-dev
       - name: Configure
         run: meson setup build-asan -Db_sanitize=address,undefined -Db_lundef=false -Dbuild_tests=true -Ddeveloper_mode=true
       - name: Compile

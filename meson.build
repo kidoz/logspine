@@ -37,10 +37,11 @@ endif
 
 inc = include_directories('include')
 private_inc = include_directories('src')
+subdir('include/logspine')
 
 public_headers = files(
   'include/logspine/async_dispatcher.hpp',
-  'include/logspine/config.hpp',
+  'include/logspine/detail/mpsc_queue.hpp',
   'include/logspine/dispatcher.hpp',
   'include/logspine/field.hpp',
   'include/logspine/mdc.hpp',
@@ -83,12 +84,20 @@ logspine_sources = files(
 )
 
 logspine_cpp_args = project_warnings
-if network_enabled
-  logspine_cpp_args += ['-DLOGSPINE_WITH_NETWORK=1']
-endif
 
 zlib_dep = dependency('zlib', required: false)
 logspine_deps = []
+if network_enabled
+  curl_dep = dependency('libcurl', required: false)
+  if not curl_dep.found()
+    curl_dep = dependency('CURL', method: 'cmake', modules: ['CURL::libcurl'])
+  endif
+  json_dep = dependency('nlohmann_json', required: false)
+  if not json_dep.found()
+    json_dep = dependency('nlohmann_json', method: 'cmake', modules: ['nlohmann_json::nlohmann_json'])
+  endif
+  logspine_deps += [curl_dep, json_dep.as_system('system')]
+endif
 if zlib_dep.found()
   logspine_deps += zlib_dep
   logspine_cpp_args += ['-DLOGSPINE_WITH_ZLIB=1']
@@ -103,7 +112,11 @@ logspine_lib = library(
   install: true,
 )
 
-install_subdir('include/logspine', install_dir: get_option('includedir'))
+install_subdir(
+  'include/logspine',
+  install_dir: get_option('includedir'),
+  exclude_files: ['config.hpp.in', 'meson.build'],
+)
 
 logspine_dep = declare_dependency(
   include_directories: inc,
@@ -146,10 +159,11 @@ if get_option('build_tests')
     'test_sinks': 'tests/test_sinks.cpp',
     'test_mdc': 'tests/test_mdc.cpp',
     'test_format': 'tests/test_format.cpp',
-    'test_otlp': 'tests/test_otlp.cpp',
   }
   if network_enabled
     tests += {'test_network_sinks': 'tests/test_network_sinks.cpp'}
+  else
+    tests += {'test_otlp': 'tests/test_otlp.cpp'}
   endif
   foreach name, source : tests
     test_exe = executable(
@@ -183,6 +197,7 @@ format_targets = public_headers + logspine_sources + files(
   'tests/test_core.cpp',
   'tests/test_json.cpp',
   'tests/test_network_sinks.cpp',
+  'tests/test_otlp.cpp',
   'tests/test_sinks.cpp',
 )
 if clang_format.found()

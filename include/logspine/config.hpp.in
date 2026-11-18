@@ -1,9 +1,9 @@
 #pragma once
 
-#ifdef LOGSPINE_WITH_NETWORK
-#define LOGSPINE_CONFIG_NETWORK 1
-#else
-#define LOGSPINE_CONFIG_NETWORK 0
+#mesondefine01 LOGSPINE_CONFIG_NETWORK
+
+#if LOGSPINE_CONFIG_NETWORK
+#define LOGSPINE_WITH_NETWORK 1
 #endif
 
 namespace logspine {
