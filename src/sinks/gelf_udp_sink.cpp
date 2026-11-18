@@ -19,6 +19,10 @@ namespace logspine::sinks {
 
 namespace {
 
+constexpr std::size_t chunk_header_size = 12;
+constexpr std::size_t max_udp_payload = 65507;
+constexpr std::size_t max_chunks = 128;
+
 std::uint64_t generate_gelf_message_id() {
   static std::atomic<std::uint64_t> counter{0};
   const auto now = static_cast<std::uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
@@ -37,14 +41,18 @@ gelf_udp_sink::gelf_udp_sink(gelf_udp_sink_options options)
   if (options_.port == 0U) {
     throw std::invalid_argument("gelf_udp_sink port must be greater than zero");
   }
+  if (options_.max_chunk_size <= chunk_header_size || options_.max_chunk_size > max_udp_payload) {
+    throw std::invalid_argument("gelf_udp_sink max_chunk_size must be between 13 and 65507");
+  }
   configure_transport();
 }
 
 gelf_udp_sink::~gelf_udp_sink() = default;
 
 void gelf_udp_sink::write(const log_event& event) {
-  if (!should_log(event))
+  if (!should_log(event)) {
     return;
+  }
 
   std::string payload;
   if (!format_event(event, payload)) {
@@ -63,16 +71,18 @@ void gelf_udp_sink::write(const log_event& event) {
   std::vector<std::string> chunks;
   if (payload.size() > options_.max_chunk_size) {
     const std::uint64_t message_id = generate_gelf_message_id();
-    const std::size_t max_payload_per_chunk = options_.max_chunk_size - 12; // 12 bytes header
-    const std::size_t total_chunks = (payload.size() + max_payload_per_chunk - 1) / max_payload_per_chunk;
-
-    if (total_chunks > 128) {
-      // Too many chunks for GELF, we drop it or just send what we can.
-      // GELF spec says max 128 chunks. We will truncate payload to 128 chunks.
+    const auto max_payload_per_chunk = options_.max_chunk_size - chunk_header_size;
+    const auto total_chunks = 1 + (payload.size() - 1) / max_payload_per_chunk;
+    if (total_chunks > max_chunks) {
+      const std::scoped_lock lock(mutex_);
+      ++statistics_.write_attempts;
+      ++statistics_.write_failures;
+      record_error_message("GELF record exceeds the 128-chunk limit");
+      throw std::length_error(last_error_message_);
     }
 
-    const std::size_t chunks_to_send = std::min<std::size_t>(total_chunks, 128);
-    for (std::size_t i = 0; i < chunks_to_send; ++i) {
+    chunks.reserve(total_chunks);
+    for (std::size_t i = 0; i < total_chunks; ++i) {
       std::string chunk;
       chunk.reserve(options_.max_chunk_size);
       chunk.push_back('\x1e');
@@ -81,7 +91,7 @@ void gelf_udp_sink::write(const log_event& event) {
         chunk.push_back(static_cast<char>((message_id >> (b * 8)) & 0xFF));
       }
       chunk.push_back(static_cast<char>(i));
-      chunk.push_back(static_cast<char>(chunks_to_send));
+      chunk.push_back(static_cast<char>(total_chunks));
 
       std::size_t offset = i * max_payload_per_chunk;
       std::size_t size = std::min(max_payload_per_chunk, payload.size() - offset);
