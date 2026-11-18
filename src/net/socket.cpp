@@ -117,6 +117,13 @@ native_socket connect_tcp_socket(const std::string& host, std::uint16_t port) {
     if (socket_handle == invalid_socket) {
       continue;
     }
+#if defined(SO_NOSIGPIPE)
+    const int no_sigpipe = 1;
+    if (setsockopt(socket_handle, SOL_SOCKET, SO_NOSIGPIPE, &no_sigpipe, sizeof(no_sigpipe)) != 0) {
+      close_socket(socket_handle);
+      continue;
+    }
+#endif
     set_socket_timeout(socket_handle, 5000); // 5 seconds timeout
 #if defined(_WIN32)
     const auto address_length = static_cast<int>(current->ai_addrlen);
@@ -191,7 +198,12 @@ void tcp_client::send_all(std::string_view payload) {
     const int sent = ::send(static_cast<SOCKET>(socket_handle_), payload.data() + offset,
                             static_cast<int>(payload.size() - offset), 0);
 #else
-    const auto sent = ::send(socket_handle_, payload.data() + offset, payload.size() - offset, 0);
+#if defined(MSG_NOSIGNAL)
+    constexpr auto flags = MSG_NOSIGNAL;
+#else
+    constexpr auto flags = 0;
+#endif
+    const auto sent = ::send(socket_handle_, payload.data() + offset, payload.size() - offset, flags);
 #endif
     if (sent < 0 && last_error_is_interrupted()) {
       continue;
@@ -296,6 +308,9 @@ void udp_client::configure(const std::string&, std::uint16_t) {
 }
 void udp_client::send(std::string_view) {
   throw std::runtime_error("network support is disabled");
+}
+bool udp_client::configured() const noexcept {
+  return false;
 }
 void udp_client::close() noexcept {}
 
