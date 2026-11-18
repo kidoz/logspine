@@ -34,3 +34,12 @@ TEST_CASE("event JSON serialization is deterministic enough for tests", "[json][
   REQUIRE(human.find("warn") != std::string::npos);
   REQUIRE(human.find("customer=alice") != std::string::npos);
 }
+
+TEST_CASE("human-readable records escape control characters in user text", "[json][escaping]") {
+  logspine::log_event event;
+  event.logger_name = "name\r";
+  event.message = "message\n\x1b[0m";
+  event.fields = {logspine::kv("field\t", "value\x7f")};
+  const auto human = logspine::format_human_readable(event);
+  REQUIRE(human.ends_with("name\\r message\\n\\u001B[0m field\\t=value\\u007F"));
+}

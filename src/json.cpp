@@ -92,6 +92,21 @@ void append_fields_object(const std::vector<field>& fields, std::string& output)
   output.push_back('}');
 }
 
+void append_human_text(std::string_view value, std::string& output) {
+  for (const auto ch : value) {
+    const auto byte = static_cast<unsigned char>(ch);
+    if (byte < 0x20U) {
+      append_json_escaped(std::string_view(&ch, 1), output);
+    } else if (byte == 0x7FU) {
+      output += "\\u007F";
+    } else if (ch == '\\') {
+      output += "\\\\";
+    } else {
+      output.push_back(ch);
+    }
+  }
+}
+
 } // namespace
 
 void append_json_escaped(std::string_view value, std::string& output) {
@@ -216,13 +231,13 @@ std::string format_human_readable(const log_event& event) {
   output.push_back(' ');
   output += std::string(to_string(event.severity));
   output.push_back(' ');
-  output += event.logger_name;
+  append_human_text(event.logger_name, output);
   output.push_back(' ');
-  output += event.message;
+  append_human_text(event.message, output);
 
   for (const auto& entry : event.fields) {
     output.push_back(' ');
-    output += std::string(entry.key());
+    append_human_text(entry.key(), output);
     output.push_back('=');
     std::visit(
         [&output](const auto& typed_value) {
@@ -246,7 +261,7 @@ std::string format_human_readable(const log_event& event) {
               output += "null";
             }
           } else if constexpr (std::is_same_v<value_t, std::string>) {
-            output += typed_value;
+            append_human_text(typed_value, output);
           }
         },
         entry.value());
