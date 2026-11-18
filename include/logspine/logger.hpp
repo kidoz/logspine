@@ -29,8 +29,9 @@ public:
   void flush();
 
   void log_macro_dispatch(level severity, source_location location, std::string_view message) {
-    if (enabled(severity))
+    if (enabled(severity)) {
       dispatch(severity, message, {}, location);
+    }
   }
 
   template <typename... Fields>

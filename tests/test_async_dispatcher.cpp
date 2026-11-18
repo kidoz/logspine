@@ -171,3 +171,30 @@ TEST_CASE("drop_oldest overflow policy records dropped events", "[async][overflo
   sink->release.notify_all();
   dispatcher.flush();
 }
+
+TEST_CASE("async dispatcher drains all accepted events during destruction", "[async][shutdown]") {
+  auto sink = std::make_shared<counting_sink>();
+  for (int run = 0; run < 100; ++run) {
+    logspine::async_dispatcher dispatcher({sink}, {.queue_capacity = 8, .batch_size = 2});
+    for (int event = 0; event < 8; ++event) {
+      dispatcher.dispatch({});
+    }
+  }
+  REQUIRE(sink->writes.load() == 800);
+  REQUIRE(sink->flushes.load() == 100);
+}
+
+TEST_CASE("async dispatcher completes repeated concurrent flushes", "[async][flush]") {
+  auto sink = std::make_shared<counting_sink>();
+  logspine::async_dispatcher dispatcher({sink}, {.queue_capacity = 8, .batch_size = 2});
+  std::jthread other([&dispatcher] {
+    for (int run = 0; run < 200; ++run) {
+      dispatcher.flush();
+    }
+  });
+  for (int run = 0; run < 200; ++run) {
+    dispatcher.dispatch({});
+    dispatcher.flush();
+    REQUIRE(sink->writes.load() == run + 1);
+  }
+}

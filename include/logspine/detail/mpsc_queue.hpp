@@ -9,7 +9,9 @@
 namespace logspine::detail {
 
 inline std::size_t round_up_to_power_of_2(std::size_t n) {
-  if (n <= 1) return 2;
+  if (n <= 1) {
+    return 2;
+  }
   --n;
   n |= n >> 1;
   n |= n >> 2;
@@ -26,11 +28,9 @@ inline std::size_t round_up_to_power_of_2(std::size_t n) {
 #pragma warning(disable : 4324)
 #endif
 
-template <typename T>
-class mpsc_queue {
- public:
-  explicit mpsc_queue(std::size_t capacity)
-      : buffer_mask_(capacity - 1) {
+template <typename T> class mpsc_queue {
+public:
+  explicit mpsc_queue(std::size_t capacity) : buffer_mask_(capacity - 1) {
     if ((capacity == 0) || ((capacity & (capacity - 1)) != 0)) {
       throw std::invalid_argument("capacity must be a power of 2");
     }
@@ -93,7 +93,7 @@ class mpsc_queue {
     return true;
   }
 
- private:
+private:
   struct slot {
     std::atomic<std::size_t> sequence;
     T data;

@@ -33,8 +33,10 @@ void async_dispatcher::flush() {
   const auto flush_id = next_flush_id_.fetch_add(1, std::memory_order_relaxed) + 1;
   enqueue_flush_request(flush_id);
 
-  while (completed_flush_id_.load(std::memory_order_acquire) < flush_id) {
-    completed_flush_id_.wait(completed_flush_id_.load(std::memory_order_relaxed), std::memory_order_acquire);
+  auto completed = completed_flush_id_.load(std::memory_order_acquire);
+  while (completed < flush_id) {
+    completed_flush_id_.wait(completed, std::memory_order_acquire);
+    completed = completed_flush_id_.load(std::memory_order_acquire);
   }
 }
 
@@ -54,33 +56,26 @@ void async_dispatcher::worker_loop() {
     batch.clear();
     queue_item item;
 
-    while (!stopping_.load(std::memory_order_acquire) && !queue_->dequeue(item)) {
+    while (!queue_->dequeue(item)) {
       sleeping_.store(true, std::memory_order_release);
+      const bool stopping = stopping_.load(std::memory_order_acquire);
       if (queue_->dequeue(item)) {
         sleeping_.store(false, std::memory_order_release);
         break;
       }
-      if (stopping_.load(std::memory_order_acquire))
-        break;
+      if (stopping) {
+        safe_flush_sinks();
+        return;
+      }
       std::unique_lock lock(mutex_);
       queue_not_empty_.wait_for(lock, std::chrono::milliseconds(50), [this] {
         return stopping_.load(std::memory_order_acquire) || !sleeping_.load(std::memory_order_acquire);
       });
     }
 
-    if (stopping_.load(std::memory_order_acquire)) {
-      while (queue_->dequeue(item)) {
-        batch.push_back(std::move(item));
-        if (batch.size() >= options_.batch_size)
-          break;
-      }
-      if (batch.empty())
-        break;
-    } else {
+    batch.push_back(std::move(item));
+    while (batch.size() < options_.batch_size && queue_->dequeue(item)) {
       batch.push_back(std::move(item));
-      while (batch.size() < options_.batch_size && queue_->dequeue(item)) {
-        batch.push_back(std::move(item));
-      }
     }
 
     {
@@ -102,8 +97,6 @@ void async_dispatcher::worker_loop() {
       }
     }
   }
-
-  safe_flush_sinks();
 }
 
 bool async_dispatcher::enqueue_event(log_event event) {
@@ -127,8 +120,9 @@ bool async_dispatcher::enqueue_event(log_event event) {
   for (;;) {
     if (queue_->enqueue(event)) {
       if (sleeping_.load(std::memory_order_acquire)) {
-        if (!lock.owns_lock())
+        if (!lock.owns_lock()) {
           lock.lock();
+        }
         sleeping_.store(false, std::memory_order_release);
         queue_not_empty_.notify_one();
       }
@@ -155,8 +149,9 @@ bool async_dispatcher::enqueue_event(log_event event) {
       break; // retry immediately
     }
     case overflow_policy::block: {
-      if (!lock.owns_lock())
+      if (!lock.owns_lock()) {
         lock.lock();
+      }
       if (options_.block_retry_timeout.count() > 0) {
         if (queue_not_full_.wait_for(lock, std::chrono::milliseconds(10)) == std::cv_status::timeout) {
           if (std::chrono::steady_clock::now() - start >= options_.block_retry_timeout) {
@@ -189,8 +184,9 @@ void async_dispatcher::enqueue_flush_request(std::uint64_t flush_id) {
   for (;;) {
     if (queue_->enqueue(item)) {
       if (sleeping_.load(std::memory_order_acquire)) {
-        if (!lock.owns_lock())
+        if (!lock.owns_lock()) {
           lock.lock();
+        }
         sleeping_.store(false, std::memory_order_release);
         queue_not_empty_.notify_one();
       }
@@ -206,8 +202,9 @@ void async_dispatcher::enqueue_flush_request(std::uint64_t flush_id) {
       return;
     }
 
-    if (!lock.owns_lock())
+    if (!lock.owns_lock()) {
       lock.lock();
+    }
     queue_not_full_.wait_for(lock, std::chrono::milliseconds(10));
   }
 }
