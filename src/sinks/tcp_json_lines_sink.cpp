@@ -31,13 +31,12 @@ tcp_json_lines_sink::tcp_json_lines_sink(tcp_json_lines_sink_options options)
 tcp_json_lines_sink::~tcp_json_lines_sink() = default;
 
 void tcp_json_lines_sink::write(const log_event& event) {
-  if (!should_log(event))
+  if (!should_log(event)) {
     return;
+  }
 
   std::string payload;
-  if (formatter_) {
-    formatter_->format(event, payload);
-  } else {
+  if (!format_event(event, payload)) {
     payload = detail::make_tcp_json_lines_payload(event);
   }
 

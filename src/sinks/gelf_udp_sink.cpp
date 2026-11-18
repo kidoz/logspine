@@ -47,9 +47,7 @@ void gelf_udp_sink::write(const log_event& event) {
     return;
 
   std::string payload;
-  if (formatter_) {
-    formatter_->format(event, payload);
-  } else {
+  if (!format_event(event, payload)) {
     payload = detail::make_gelf_payload(event, options_.source_host);
   }
 

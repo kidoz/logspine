@@ -9,14 +9,14 @@ namespace logspine::sinks {
 console_sink::console_sink(console_sink_options options) : options_(options) {}
 
 void console_sink::write(const log_event& event) {
-  if (!should_log(event))
+  if (!should_log(event)) {
     return;
+  }
 
   std::scoped_lock lock(mutex_);
   auto& stream = select_stream(event.severity);
-  if (formatter_) {
-    std::string buffer;
-    formatter_->format(event, buffer);
+  std::string buffer;
+  if (format_event(event, buffer)) {
     stream << buffer;
   } else if (options_.format == sink_format::json_lines) {
     stream << to_json_lines_record(event);

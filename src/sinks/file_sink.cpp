@@ -109,9 +109,8 @@ void file_sink::write(const log_event& event) {
   std::scoped_lock lock(mutex_);
   rotate_if_needed();
 
-  if (formatter_) {
-    std::string buffer;
-    formatter_->format(event, buffer);
+  std::string buffer;
+  if (format_event(event, buffer)) {
     stream_ << buffer;
   } else if (options_.format == sink_format::json_lines) {
     stream_ << to_json_lines_record(event);

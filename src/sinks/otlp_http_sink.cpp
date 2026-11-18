@@ -125,9 +125,7 @@ void otlp_http_sink::write(const log_event& event) {
     return;
 
   std::string payload;
-  if (formatter_) {
-    formatter_->format(event, payload);
-  } else {
+  if (!format_event(event, payload)) {
     payload = make_otlp_json(event, options_.service_name);
   }
 
