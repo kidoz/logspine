@@ -1,15 +1,39 @@
 #include "sinks/network_payloads.hpp"
 
+#include <atomic>
 #include <filesystem>
 #include <fstream>
+#include <latch>
 #include <memory>
+#include <random>
 #include <string>
+#include <utility>
 
 #include <catch2/catch_test_macros.hpp>
 
 #include <logspine/logspine.hpp>
 
 namespace {
+
+class temp_directory {
+public:
+  temp_directory() {
+    std::random_device random;
+    do {
+      path = std::filesystem::temp_directory_path() / ("logspine-tests-" + std::to_string(random()));
+    } while (!std::filesystem::create_directory(path));
+  }
+
+  ~temp_directory() {
+    std::error_code ignored;
+    std::filesystem::remove_all(path, ignored);
+  }
+
+  temp_directory(const temp_directory&) = delete;
+  temp_directory& operator=(const temp_directory&) = delete;
+
+  std::filesystem::path path;
+};
 
 std::string read_all(const std::filesystem::path& path) {
   std::ifstream input(path);
@@ -19,8 +43,7 @@ std::string read_all(const std::filesystem::path& path) {
 } // namespace
 
 TEST_CASE("file and elastic bulk sinks emit expected record shapes", "[sinks][file]") {
-  const auto temp_dir = std::filesystem::temp_directory_path() / "logspine-tests";
-  std::filesystem::create_directories(temp_dir);
+  const temp_directory temp_dir;
 
   logspine::log_event event;
   event.logger_name = "checkout";
@@ -28,7 +51,7 @@ TEST_CASE("file and elastic bulk sinks emit expected record shapes", "[sinks][fi
   event.severity = logspine::level::info;
   event.fields = {logspine::kv("order_id", 42)};
 
-  const auto file_path = temp_dir / "events.jsonl";
+  const auto file_path = temp_dir.path / "events.jsonl";
   {
     logspine::sinks::file_sink sink({.path = file_path, .format = logspine::sink_format::json_lines, .append = false});
     sink.write(event);
@@ -40,7 +63,7 @@ TEST_CASE("file and elastic bulk sinks emit expected record shapes", "[sinks][fi
   REQUIRE_FALSE(file_content.empty());
   REQUIRE(file_content.back() == '\n');
 
-  const auto bulk_path = temp_dir / "bulk.ndjson";
+  const auto bulk_path = temp_dir.path / "bulk.ndjson";
   {
     logspine::sinks::elastic_bulk_file_sink sink({.path = bulk_path, .index_name = "logs-index", .append = false});
     sink.write(event);
@@ -88,9 +111,8 @@ public:
 };
 
 TEST_CASE("sink supports custom formatter and filter", "[sinks][extensibility]") {
-  const auto temp_dir = std::filesystem::temp_directory_path() / "logspine-tests";
-  std::filesystem::create_directories(temp_dir);
-  const auto file_path = temp_dir / "custom.log";
+  const temp_directory temp_dir;
+  const auto file_path = temp_dir.path / "custom.log";
 
   {
     logspine::sinks::file_sink sink({.path = file_path, .append = false});
@@ -116,11 +138,8 @@ TEST_CASE("sink supports custom formatter and filter", "[sinks][extensibility]")
 }
 
 TEST_CASE("file sink rotates files when size limit is reached", "[sinks][file][rotation]") {
-  const auto temp_dir = std::filesystem::temp_directory_path() / "logspine-tests-rotation";
-  std::filesystem::create_directories(temp_dir);
-  const auto file_path = temp_dir / "rotation.log";
-  std::filesystem::remove_all(temp_dir);
-  std::filesystem::create_directories(temp_dir);
+  const temp_directory temp_dir;
+  const auto file_path = temp_dir.path / "rotation.log";
 
   logspine::log_event event;
   event.logger_name = "test";
@@ -142,7 +161,87 @@ TEST_CASE("file sink rotates files when size limit is reached", "[sinks][file][r
   }
 
   REQUIRE(std::filesystem::exists(file_path));
-  REQUIRE(std::filesystem::exists(temp_dir / "rotation.log.1"));
-  REQUIRE(std::filesystem::exists(temp_dir / "rotation.log.2"));
-  REQUIRE_FALSE(std::filesystem::exists(temp_dir / "rotation.log.3"));
+  REQUIRE(std::filesystem::exists(temp_dir.path / "rotation.log.1"));
+  REQUIRE(std::filesystem::exists(temp_dir.path / "rotation.log.2"));
+  REQUIRE_FALSE(std::filesystem::exists(temp_dir.path / "rotation.log.3"));
+}
+
+TEST_CASE("file sink preserves the active log when rotation fails", "[sinks][file][rotation]") {
+  const temp_directory temp_dir;
+  const auto path = temp_dir.path / "events.log";
+  const auto archive = temp_dir.path / "events.log.1";
+  std::filesystem::create_directories(archive);
+  std::ofstream(archive / "entry") << "prevent removal of archive directory";
+
+  logspine::sinks::file_sink sink({.path = path, .append = false, .max_file_size = 1, .max_files = 1});
+  logspine::log_event event;
+  event.message = "preserve this record";
+  sink.write(event);
+  sink.flush();
+  const auto original = read_all(path);
+  REQUIRE_FALSE(original.empty());
+
+  event.message = "next record";
+  REQUIRE_THROWS_AS(sink.write(event), std::filesystem::filesystem_error);
+  REQUIRE(read_all(path) == original);
+
+  std::filesystem::remove(archive / "entry");
+  std::filesystem::remove(archive);
+  sink.write(event);
+  sink.flush();
+  REQUIRE(read_all(archive) == original);
+  REQUIRE(read_all(path).find("next record") != std::string::npos);
+}
+
+namespace {
+
+struct formatter_lifetime {
+  std::latch entered{1};
+  std::latch release{1};
+  std::atomic<bool> destroyed{false};
+};
+
+class blocking_formatter final : public logspine::formatter {
+public:
+  explicit blocking_formatter(formatter_lifetime& lifetime) : lifetime_(lifetime) {}
+
+  ~blocking_formatter() override {
+    lifetime_.destroyed.store(true);
+  }
+
+  void format(const logspine::log_event&, std::string& output) override {
+    auto& lifetime = lifetime_;
+    lifetime.entered.count_down();
+    lifetime.release.wait();
+    output = "previous formatter\n";
+  }
+
+private:
+  formatter_lifetime& lifetime_;
+};
+
+} // namespace
+
+TEST_CASE("replacing a formatter keeps an active callback alive", "[sinks][extensibility]") {
+  const temp_directory temp_dir;
+  const auto path = temp_dir.path / "events.log";
+  formatter_lifetime lifetime;
+  auto sink = std::make_shared<logspine::sinks::file_sink>(logspine::sinks::file_sink_options{.path = path});
+  sink->set_formatter(std::make_unique<blocking_formatter>(lifetime));
+  logspine::async_dispatcher dispatcher({sink});
+
+  dispatcher.dispatch({});
+  lifetime.entered.wait();
+  sink->set_formatter(std::make_unique<custom_formatter>());
+  const auto destroyed_during_callback = lifetime.destroyed.load();
+  lifetime.release.count_down();
+
+  logspine::log_event event;
+  event.message = "replacement";
+  dispatcher.dispatch(std::move(event));
+  dispatcher.flush();
+
+  REQUIRE_FALSE(destroyed_during_callback);
+  REQUIRE(lifetime.destroyed.load());
+  REQUIRE(read_all(path) == "previous formatter\nCUSTOM_FORMAT: replacement\n");
 }

@@ -26,7 +26,8 @@ public:
 
 private:
   void rotate_if_needed();
-  void open_file();
+  void write_compressed_archive(const std::filesystem::path& archive);
+  void open_file(bool append);
 
   file_sink_options options_;
   std::ofstream stream_;
